@@ -58,6 +58,6 @@ class TestDownloadSingle:
         assert result is not None
         # Verify yt-dlp was called with audio extraction flags
         call_args = mock_run.call_args[0][0]
-        assert "yt-dlp" in call_args
+        assert "yt-dlp" in call_args[0]  # May be a full path like /path/to/yt-dlp
         assert "-x" in call_args
         assert "--audio-format" in call_args

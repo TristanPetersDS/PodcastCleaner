@@ -19,28 +19,47 @@ def demucs_separate(audio_path: str, model_name: str, device: torch.device) -> d
 
     Returns dict with 'vocals', 'no_vocals' tensors and 'sample_rate'.
     """
-    import demucs.api
+    from demucs.apply import apply_model
+    from demucs.pretrained import get_model
 
-    separator = demucs.api.Separator(model=model_name, device=str(device))
+    model = get_model(model_name)
+    model.to(device)
+
+    # Load audio at the model's native sample rate
+    wav, sr = torchaudio.load(audio_path)
+    if sr != model.samplerate:
+        wav = torchaudio.functional.resample(wav, sr, model.samplerate)
+    # Demucs expects (batch, channels, time) — ensure stereo
+    if wav.shape[0] == 1:
+        wav = wav.repeat(2, 1)
+    wav = wav.unsqueeze(0).to(device)  # (1, channels, time)
 
     try:
-        origin, separated = separator.separate_audio_file(audio_path)
+        sources = apply_model(model, wav, device=device)
     except torch.cuda.OutOfMemoryError:
         logger.warning("GPU OOM — falling back to CPU")
-        separator = demucs.api.Separator(model=model_name, device="cpu")
-        origin, separated = separator.separate_audio_file(audio_path)
+        model.to("cpu")
+        wav = wav.to("cpu")
+        sources = apply_model(model, wav, device="cpu")
 
-    vocals = separated.get("vocals")
-    no_vocals = separated.get("no_vocals")
+    # sources shape: (1, num_sources, channels, time)
+    # Find vocals index from model.sources
+    source_names = model.sources
+    vocals_idx = source_names.index("vocals") if "vocals" in source_names else 0
 
-    # If two_stems wasn't used, reconstruct background
-    if no_vocals is None:
-        no_vocals = sum(v for k, v in separated.items() if k != "vocals")
+    vocals = sources[0, vocals_idx]  # (channels, time)
+    # Sum all non-vocal sources for background
+    non_vocal_indices = [i for i in range(len(source_names)) if i != vocals_idx]
+    no_vocals = sources[0, non_vocal_indices].sum(dim=0)
+
+    # Mix to mono: average channels
+    vocals = vocals.mean(dim=0, keepdim=True)  # (1, time)
+    no_vocals = no_vocals.mean(dim=0, keepdim=True)  # (1, time)
 
     return {
         "vocals": vocals,
         "no_vocals": no_vocals,
-        "sample_rate": separator.samplerate,
+        "sample_rate": model.samplerate,
     }
 
 
@@ -103,5 +122,11 @@ def run_separate(
         stats = compute_stats(str(vocals_path))
         report_path = str(episode_path / "analysis" / "audio_report.json")
         save_stage_report(report_path, "separated", stats)
+
+    # Release GPU memory for subsequent stages
+    import gc
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     mark_done(episode_path, "separate")

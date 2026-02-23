@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from podcast_cleaner.utils import ensure_dir, is_done, mark_done, sanitize_filename
@@ -12,10 +14,18 @@ from podcast_cleaner.utils import ensure_dir, is_done, mark_done, sanitize_filen
 logger = logging.getLogger(__name__)
 
 
+def _ytdlp_cmd() -> str:
+    """Find the best yt-dlp executable, preferring the venv's copy."""
+    venv_ytdlp = Path(sys.executable).parent / "yt-dlp"
+    if venv_ytdlp.exists():
+        return str(venv_ytdlp)
+    return shutil.which("yt-dlp") or "yt-dlp"
+
+
 def get_playlist_entries(url: str) -> list[dict]:
     """Fetch playlist metadata without downloading."""
     result = subprocess.run(
-        ["yt-dlp", "--flat-playlist", "--dump-json", url],
+        [_ytdlp_cmd(), "--flat-playlist", "--dump-json", url],
         capture_output=True,
         text=True,
     )
@@ -57,7 +67,7 @@ def download_single(
     """
     output_template = str(Path(output_dir) / "%(title)s.%(ext)s")
     cmd = [
-        "yt-dlp",
+        _ytdlp_cmd(),
         "-x",
         "--audio-format", format_pref,
         "--audio-quality", "0",
