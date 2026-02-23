@@ -34,13 +34,11 @@ def run_preprocess(
 
     raw_dir = episode_path / "raw"
     if not raw_dir.exists():
-        log.error(f"No raw/ directory found in {episode_dir}")
-        return
+        raise FileNotFoundError(f"No raw/ directory found in {episode_dir}")
 
     audio_files = list(raw_dir.glob("*.wav")) + list(raw_dir.glob("*.mp3")) + list(raw_dir.glob("*.m4a"))
     if not audio_files:
-        log.error(f"No audio files found in {raw_dir}")
-        return
+        raise FileNotFoundError(f"No audio files found in {raw_dir}")
 
     out_dir = ensure_dir(episode_path / "preprocessed")
 

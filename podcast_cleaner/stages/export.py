@@ -53,8 +53,7 @@ def run_export(
     norm_dir = episode_path / "normalized"
     audio_files = list(norm_dir.glob("*_normalized.wav")) if norm_dir.exists() else []
     if not audio_files:
-        log.error(f"No normalized audio found in {episode_dir}")
-        return
+        raise FileNotFoundError(f"No normalized audio found in {episode_dir}")
 
     final_dir = ensure_dir(episode_path / "final")
     episode_name = episode_path.name

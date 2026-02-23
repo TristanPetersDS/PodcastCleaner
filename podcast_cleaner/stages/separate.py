@@ -60,13 +60,11 @@ def run_separate(
 
     pre_dir = episode_path / "preprocessed"
     if not pre_dir.exists():
-        log.error(f"No preprocessed/ directory in {episode_dir}")
-        return
+        raise FileNotFoundError(f"No preprocessed/ directory in {episode_dir}")
 
     wav_files = list(pre_dir.glob("*.wav"))
     if not wav_files:
-        log.error(f"No WAV files in {pre_dir}")
-        return
+        raise FileNotFoundError(f"No WAV files in {pre_dir}")
 
     device = get_device(sep_config.get("device", "auto"))
     model_name = sep_config.get("model", "htdemucs_ft")
@@ -74,18 +72,29 @@ def run_separate(
 
     out_dir = ensure_dir(episode_path / "separated")
 
+    target_sr = config.get("preprocess", {}).get("sample_rate", 48000)
+
     for wav_path in wav_files:
         log.info(f"Separating: {wav_path.name}")
         result = demucs_separate(str(wav_path), model_name, device)
 
         stem = wav_path.stem
         sr = result["sample_rate"]
+        vocals = result["vocals"].cpu()
+        no_vocals = result["no_vocals"].cpu()
+
+        # Resample to pipeline target rate if Demucs outputs at a different rate
+        if sr != target_sr:
+            log.info(f"  Resampling from {sr}Hz to {target_sr}Hz")
+            vocals = torchaudio.functional.resample(vocals, sr, target_sr)
+            no_vocals = torchaudio.functional.resample(no_vocals, sr, target_sr)
+            sr = target_sr
 
         vocals_path = out_dir / f"{stem}_vocals.wav"
         bg_path = out_dir / f"{stem}_background.wav"
 
-        torchaudio.save(str(vocals_path), result["vocals"].cpu(), sr)
-        torchaudio.save(str(bg_path), result["no_vocals"].cpu(), sr)
+        torchaudio.save(str(vocals_path), vocals, sr)
+        torchaudio.save(str(bg_path), no_vocals, sr)
 
         log.info(f"  Vocals: {vocals_path.name}")
         log.info(f"  Background: {bg_path.name}")

@@ -27,7 +27,7 @@ def run_pipeline(
     from podcast_cleaner.stages.preprocess import run_preprocess
     from podcast_cleaner.stages.separate import run_separate
     from podcast_cleaner.stages.transcribe import run_transcribe
-    from podcast_cleaner.utils import setup_logging
+    from podcast_cleaner.utils import clear_done, setup_logging
 
     stage_runners = {
         "preprocess": run_preprocess,
@@ -53,6 +53,10 @@ def run_pipeline(
                 if stage_name in skip_stages:
                     stage_logger.info(f"Skipping stage: {stage_name}")
                     continue
+
+                # When not resuming, clear done markers to force re-run
+                if not resume:
+                    clear_done(episode_dir, stage_name)
 
                 stage_logger.info(f"--- Stage: {stage_name} ---")
                 runner = stage_runners.get(stage_name)

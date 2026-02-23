@@ -49,8 +49,7 @@ def run_denoise(
         pre_dir = episode_path / "preprocessed"
         vocal_files = list(pre_dir.glob("*.wav")) if pre_dir.exists() else []
     if not vocal_files:
-        log.error(f"No input audio found for denoising in {episode_dir}")
-        return
+        raise FileNotFoundError(f"No input audio found for denoising in {episode_dir}")
 
     out_dir = ensure_dir(episode_path / "denoised")
     log.info(f"Denoising {len(vocal_files)} file(s)...")

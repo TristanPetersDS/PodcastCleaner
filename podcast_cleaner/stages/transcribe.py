@@ -89,8 +89,7 @@ def run_transcribe(
         sep_dir = episode_path / "separated"
         audio_files = list(sep_dir.glob("*_vocals.wav")) if sep_dir.exists() else []
     if not audio_files:
-        log.error(f"No audio files found for transcription in {episode_dir}")
-        return
+        raise FileNotFoundError(f"No audio files found for transcription in {episode_dir}")
 
     device = str(get_device(tx_config.get("device", "auto")))
     model_size = tx_config.get("model", "large-v3")

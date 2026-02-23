@@ -63,8 +63,7 @@ def run_normalize(
         sep_dir = episode_path / "separated"
         audio_files = list(sep_dir.glob("*_vocals.wav")) if sep_dir.exists() else []
     if not audio_files:
-        log.error(f"No audio files found to normalize in {episode_dir}")
-        return
+        raise FileNotFoundError(f"No audio files found to normalize in {episode_dir}")
 
     out_dir = ensure_dir(episode_path / "normalized")
 
