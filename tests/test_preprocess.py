@@ -1,7 +1,5 @@
 """Tests for the preprocess stage."""
 
-from pathlib import Path
-
 import numpy as np
 import soundfile as sf
 

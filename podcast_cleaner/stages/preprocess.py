@@ -11,7 +11,6 @@ from podcast_cleaner.utils import (
     is_done,
     mark_done,
     read_audio,
-    setup_logging,
     write_audio,
 )
 
