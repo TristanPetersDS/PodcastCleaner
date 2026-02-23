@@ -1,6 +1,5 @@
 """Tests for the denoise stage."""
 
-from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
