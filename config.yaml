@@ -1,0 +1,31 @@
+output_dir: "./output"
+
+download:
+  format: "wav"
+  quality: "best"
+
+preprocess:
+  sample_rate: 48000
+  channels: 1
+
+separation:
+  model: "htdemucs_ft"
+  device: "auto"
+
+denoise:
+  model: "DeepFilterNet3"
+
+transcription:
+  enabled: true
+  model: "large-v3"
+  language: null
+  device: "auto"
+
+normalization:
+  target_lufs: -16.0
+  true_peak_dbtp: -1.5
+
+export:
+  formats: ["mp3", "flac"]
+  mp3_bitrate: "320k"
+  sample_rate: 48000

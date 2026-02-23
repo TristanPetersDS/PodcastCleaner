@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+output/
+*.wav
+*.mp3
+*.flac
+.pytest_cache/
+.coverage
+htmlcov/

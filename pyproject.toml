@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "podcast-cleaner"
+version = "0.1.0"
+description = "CLI tool for downloading and cleaning podcast audio"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.1",
+    "yt-dlp>=2024.0",
+    "demucs>=4.0",
+    "deepfilternet>=0.5",
+    "pyloudnorm>=0.1",
+    "soundfile>=0.12",
+    "torch>=2.0",
+    "torchaudio>=2.0",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+    "tqdm>=4.65",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+transcribe = ["whisperx>=3.1"]
+dev = ["pytest>=7.0", "pytest-cov", "pytest-mock"]
+all = ["podcast-cleaner[transcribe,dev]"]
+
+[project.scripts]
+podcast-cleaner = "podcast_cleaner.cli:main"
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests that run real ML models (deselect with '-m \"not slow\"')",
+]
+testpaths = ["tests"]
