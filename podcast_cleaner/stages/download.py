@@ -7,7 +7,7 @@ import logging
 import subprocess
 from pathlib import Path
 
-from podcast_cleaner.utils import ensure_dir, is_done, mark_done, sanitize_filename, setup_logging
+from podcast_cleaner.utils import ensure_dir, is_done, mark_done, sanitize_filename
 
 logger = logging.getLogger(__name__)
 
