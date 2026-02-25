@@ -121,7 +121,16 @@ def run_transcribe(
     for audio_path in audio_files:
         log.info(f"Transcribing: {audio_path.name}")
 
-        result = whisperx_transcribe(str(audio_path), model_size, device)
+        try:
+            result = whisperx_transcribe(str(audio_path), model_size, device)
+        except ModuleNotFoundError:
+            log.warning(
+                "whisperx is not installed. Install with: "
+                "pip install podcast-cleaner[transcribe]. Skipping transcription."
+            )
+            mark_done(episode_path, "transcribe")
+            return
+
         segments = result.get("segments", [])
 
         # Build transcript data

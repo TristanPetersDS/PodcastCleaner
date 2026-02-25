@@ -58,3 +58,26 @@ class TestRunTranscribe:
         assert (transcript_dir / "01_Test-Episode.json").exists()
         assert (transcript_dir / "01_Test-Episode.srt").exists()
         assert is_done(episode_dir, "transcribe")
+
+
+class TestMissingWhisperX:
+    @patch("podcast_cleaner.stages.transcribe.whisperx_transcribe")
+    def test_transcribe_missing_whisperx(self, mock_wx, tmp_path, caplog):
+        """When whisperx is not installed, stage completes with warning."""
+        mock_wx.side_effect = ModuleNotFoundError("No module named 'whisperx'")
+
+        sr = 16000
+        audio = np.zeros(sr * 2, dtype=np.float32)
+        episode_dir = tmp_path / "01_Test-Episode"
+        denoised_dir = episode_dir / "denoised"
+        denoised_dir.mkdir(parents=True)
+        sf.write(str(denoised_dir / "test_denoised.wav"), audio, sr, subtype="FLOAT")
+
+        config = {"transcription": {"enabled": True, "model": "large-v3", "device": "cpu"}}
+
+        import logging
+        with caplog.at_level(logging.WARNING):
+            run_transcribe(str(episode_dir), config)
+
+        assert any("whisperx" in msg.lower() for msg in caplog.messages)
+        assert is_done(episode_dir, "transcribe")
