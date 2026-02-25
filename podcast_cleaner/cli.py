@@ -14,6 +14,34 @@ from podcast_cleaner.tracker import PipelineTracker
 from podcast_cleaner.utils import AUDIO_EXTENSIONS
 
 
+def _link_or_copy(source: Path, dest: Path, force_copy: bool = False) -> None:
+    """Symlink source to dest, or copy if cross-filesystem or forced."""
+    if dest.exists():
+        return
+    if force_copy:
+        import shutil
+
+        shutil.copy2(str(source), str(dest))
+        return
+    # Auto-detect cross-filesystem
+    try:
+        if source.stat().st_dev != dest.parent.stat().st_dev:
+            import shutil
+
+            shutil.copy2(str(source), str(dest))
+            return
+    except OSError:
+        pass
+    # Default: symlink
+    try:
+        dest.symlink_to(source.resolve())
+    except OSError:
+        # Fallback to copy (e.g., Windows without privileges)
+        import shutil
+
+        shutil.copy2(str(source), str(dest))
+
+
 def run_pipeline(
     config: dict,
     episode_dirs: list[str],
@@ -117,9 +145,10 @@ def main():
 @click.option("--skip", multiple=True, help="Skip a stage (can repeat)")
 @click.option("--resume", is_flag=True, help="Resume from last completed stage")
 @click.option("--cleanup-intermediates", is_flag=True, help="Delete intermediate stage dirs after success")
+@click.option("--copy-input", is_flag=True, help="Copy input files instead of symlinking (for Docker/cross-filesystem)")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed logging output")
 @click.option("--quiet", "-q", is_flag=True, help="Only show progress and errors")
-def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermediates, verbose, quiet):
+def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermediates, copy_input, verbose, quiet):
     """Run the full audio cleaning pipeline."""
     if verbose and quiet:
         raise click.UsageError("Cannot use --verbose with --quiet")
@@ -150,8 +179,7 @@ def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermedi
                 ep_dir = ensure_dir(Path(output_base) / dirname)
                 raw_dir = ensure_dir(ep_dir / "raw")
                 dest = raw_dir / f.name
-                if not dest.exists():
-                    dest.symlink_to(f.resolve())
+                _link_or_copy(f, dest, force_copy=copy_input)
                 episode_dirs.append(str(ep_dir))
 
     elif input_file:
@@ -163,8 +191,7 @@ def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermedi
         ep_dir = ensure_dir(Path(output_base) / dirname)
         raw_dir = ensure_dir(ep_dir / "raw")
         dest = raw_dir / f.name
-        if not dest.exists():
-            dest.symlink_to(f)
+        _link_or_copy(f, dest, force_copy=copy_input)
         episode_dirs.append(str(ep_dir))
 
     else:
