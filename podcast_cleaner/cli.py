@@ -19,11 +19,15 @@ def run_pipeline(
     episode_dirs: list[str],
     skip_stages: tuple[str, ...] = (),
     resume: bool = False,
+    verbose: bool = False,
+    quiet: bool = False,
 ) -> list[str]:
     """Run the full pipeline on a list of episode directories.
 
     Returns list of successfully processed episode dirs.
     """
+    import logging
+
     from podcast_cleaner.stages.denoise import run_denoise
     from podcast_cleaner.stages.export import run_export
     from podcast_cleaner.stages.normalize import run_normalize
@@ -47,6 +51,20 @@ def run_pipeline(
     for episode_dir in episode_dirs:
         ep_name = Path(episode_dir).name
         stage_logger = setup_logging(Path(episode_dir) / "processing.log", ep_name)
+
+        # Configure console output level based on verbosity flags
+        if quiet:
+            # Suppress console handler -- only log to file
+            for handler in stage_logger.handlers:
+                if hasattr(handler, 'stream') and handler.stream in (sys.stdout, sys.stderr):
+                    handler.setLevel(logging.ERROR)
+        elif verbose:
+            # Show all log messages on console
+            stage_logger.setLevel(logging.DEBUG)
+            for handler in stage_logger.handlers:
+                if hasattr(handler, 'stream') and handler.stream in (sys.stdout, sys.stderr):
+                    handler.setLevel(logging.DEBUG)
+
         stage_logger.info(f"=== Processing: {ep_name} ===")
 
         active_stages = [
@@ -99,8 +117,12 @@ def main():
 @click.option("--skip", multiple=True, help="Skip a stage (can repeat)")
 @click.option("--resume", is_flag=True, help="Resume from last completed stage")
 @click.option("--cleanup-intermediates", is_flag=True, help="Delete intermediate stage dirs after success")
-def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermediates):
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed logging output")
+@click.option("--quiet", "-q", is_flag=True, help="Only show progress and errors")
+def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermediates, verbose, quiet):
     """Run the full audio cleaning pipeline."""
+    if verbose and quiet:
+        raise click.UsageError("Cannot use --verbose with --quiet")
     if cleanup_intermediates and resume:
         raise click.UsageError("Cannot use --cleanup-intermediates with --resume")
 
@@ -153,7 +175,7 @@ def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermedi
         return
 
     console.print(f"Processing {len(episode_dirs)} episode(s)...")
-    successes = run_pipeline(config, episode_dirs, skip_stages=skip, resume=resume)
+    successes = run_pipeline(config, episode_dirs, skip_stages=skip, resume=resume, verbose=verbose, quiet=quiet)
 
     if cleanup_intermediates:
         import shutil

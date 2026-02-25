@@ -74,6 +74,23 @@ class TestCheckCommand:
         assert "ffmpeg" in result.output
 
 
+class TestVerboseQuietFlags:
+    def test_verbose_flag_exists(self, runner):
+        """--verbose flag should appear in help."""
+        result = runner.invoke(main, ["run", "--help"])
+        assert "--verbose" in result.output or "-v" in result.output
+
+    def test_quiet_flag_exists(self, runner):
+        """--quiet flag should appear in help."""
+        result = runner.invoke(main, ["run", "--help"])
+        assert "--quiet" in result.output or "-q" in result.output
+
+    def test_verbose_quiet_conflict(self, runner):
+        """--verbose and --quiet should conflict."""
+        result = runner.invoke(main, ["run", "--input", __file__, "--verbose", "--quiet"])
+        assert result.exit_code != 0
+
+
 class TestRichConsole:
     def test_rich_console_fallback_no_tty(self):
         """Rich should use plain text when not a TTY."""
