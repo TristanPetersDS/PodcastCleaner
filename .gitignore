@@ -1,16 +1,38 @@
+# Output and downloads
+output/
+downloads/
+
+# Claude Code
+.claude/
+
+# Logs and markers
+*.log
+*.done
+
+# User config
+config.yaml
+
+# Python
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
 *.egg-info/
+podcast_cleaner.egg-info/
 dist/
 build/
-.eggs/
 *.egg
+
+# Virtual env
 .venv/
-venv/
-output/
-*.wav
-*.mp3
-*.flac
-.pytest_cache/
-.coverage
-htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# cuDNN workaround
+.cudnn8/
