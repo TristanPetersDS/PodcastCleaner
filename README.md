@@ -22,9 +22,19 @@ download → preprocess → separate → denoise → transcribe → normalize �
 
 ## Quick Start
 
+### Automated Setup
+
 ```bash
-# Clone and install
-git clone <repo-url> && cd PodcastCleaner
+git clone https://github.com/TristanPetersDS/PodcastCleaner.git && cd PodcastCleaner
+./setup.sh
+```
+
+The setup script detects Python 3.10+, creates a virtual environment, installs all dependencies, copies the example config, and runs a system check.
+
+### Manual Setup
+
+```bash
+git clone https://github.com/TristanPetersDS/PodcastCleaner.git && cd PodcastCleaner
 python -m venv .venv && source .venv/bin/activate
 pip install -e '.[dev]'
 
@@ -32,12 +42,35 @@ pip install -e '.[dev]'
 pip install -e '.[transcribe]'
 ```
 
+### Docker (GPU-accelerated)
+
+```bash
+# Build and run with GPU passthrough
+docker-compose up --build
+
+# Or run directly
+docker build -t podcast-cleaner .
+docker run --gpus all -v ./output:/app/output -v ./config.yaml:/app/config.yaml podcast-cleaner run --url "..."
+```
+
+The Docker image pre-downloads Demucs and DeepFilterNet models so they're baked into the image.
+
 ### Requirements
 
 - Python 3.10+
 - ffmpeg (`sudo apt install ffmpeg` or `brew install ffmpeg`)
 - CUDA GPU recommended (12GB+ VRAM). CPU fallback is automatic but slow.
 - Node.js (for yt-dlp YouTube extraction)
+
+### Check System Dependencies
+
+```bash
+podcast-cleaner check
+```
+
+Reports Python version, ffmpeg, CUDA/GPU availability, yt-dlp, and all ML library status.
+
+## Usage
 
 ### Run on a YouTube video
 
@@ -75,6 +108,33 @@ Without `--resume`, stages re-run from scratch. With `--resume`, completed stage
 podcast-cleaner run --url "..." --skip transcribe --skip denoise
 ```
 
+### Verbose / Quiet output
+
+```bash
+# Show detailed logging (DEBUG level)
+podcast-cleaner run --input-dir ./episodes --verbose
+
+# Only show progress and errors
+podcast-cleaner run --input-dir ./episodes --quiet
+```
+
+### Cleanup intermediate files
+
+```bash
+# Delete preprocessed/separated/denoised/normalized dirs after success
+podcast-cleaner run --input-dir ./episodes --cleanup-intermediates
+```
+
+This keeps only `raw/`, `final/`, and `analysis/` — useful for saving disk space. Cannot be combined with `--resume`.
+
+### Copy input files (Docker / cross-filesystem)
+
+```bash
+podcast-cleaner run --input-dir ./episodes --copy-input
+```
+
+By default, input files are symlinked into the episode directory. Use `--copy-input` when working across filesystems (e.g., Docker volumes). Cross-filesystem situations are auto-detected even without this flag.
+
 ### Run a single stage
 
 ```bash
@@ -96,9 +156,24 @@ denoised         LUFS= -30.3  SNR= 54.2dB  Peak= -5.6dBTP  Duration=990.0s
 normalized       LUFS= -26.2  SNR= 54.2dB  Peak= -1.5dBTP  Duration=990.0s
 ```
 
+### All CLI Flags (run command)
+
+| Flag | Description |
+|---|---|
+| `--url` | YouTube playlist or video URL |
+| `--input-dir` | Directory of local audio files |
+| `--input` | Single local audio file |
+| `--config` | Path to config.yaml (default: `config.yaml`) |
+| `--skip` | Skip a stage (repeatable) |
+| `--resume` | Resume from last completed stage |
+| `--cleanup-intermediates` | Delete intermediate dirs after success |
+| `--copy-input` | Copy files instead of symlinking |
+| `--verbose` / `-v` | Show detailed logging output |
+| `--quiet` / `-q` | Only show progress and errors |
+
 ## Configuration
 
-Edit `config.yaml` to tune the pipeline:
+Edit `config.yaml` to tune the pipeline. Unknown keys trigger a warning. Numeric values are validated (e.g., `target_lufs` must be negative, `sample_rate` must be positive).
 
 ```yaml
 output_dir: "./output"
@@ -163,21 +238,23 @@ pytest tests/test_normalize.py -v
 EPISODE_DIR=output/01_My-Episode pytest tests/test_audio_data.py -m slow -v
 ```
 
-61 unit/integration tests cover all stages with mocked ML models. 4 additional slow tests validate quality thresholds against real processed audio.
+94 unit/integration tests cover all stages with mocked ML models. 4 additional slow tests validate quality thresholds against real processed audio.
 
 ## Architecture
 
 ```
 podcast_cleaner/
-  cli.py                    # Click CLI: run, analyze, stage commands
-  config.py                 # YAML config loading with defaults
+  cli.py                    # Click CLI: run, analyze, stage, check commands
+  config.py                 # YAML config loading with defaults + validation
+  display.py                # Shared Rich Console with TTY auto-detection
+  tracker.py                # PipelineTracker for episode/stage progress
   utils.py                  # Audio I/O, done markers, device detection
   stages/
     __init__.py             # STAGE_ORDER definition
     download.py             # yt-dlp wrapper
     preprocess.py           # Resample + mono conversion
-    separate.py             # Demucs vocal isolation
-    denoise.py              # DeepFilterNet3 noise removal (chunked)
+    separate.py             # Demucs vocal isolation (model cached per run)
+    denoise.py              # DeepFilterNet3 noise removal (model cached, chunked)
     transcribe.py           # WhisperX transcription + SRT
     normalize.py            # pyloudnorm + true peak limiting
     export.py               # ffmpeg format conversion
@@ -192,7 +269,17 @@ Each stage follows the same pattern:
 4. Compute and save analysis metrics
 5. Write `mark_done()` marker
 
-ML models are lazy-imported to keep CLI startup fast. GPU memory is released between stages via `gc.collect()` + `torch.cuda.empty_cache()`.
+ML models are lazy-imported to keep CLI startup fast. Demucs and DeepFilterNet models are loaded once per stage run and reused across files. GPU memory is released between stages via `gc.collect()` + `torch.cuda.empty_cache()`.
+
+## CI/CD
+
+- **GitHub Actions**: Runs tests on Python 3.10, 3.11, and 3.12 on every push and PR
+- **Pre-commit hooks**: ruff (lint + format), trailing whitespace, YAML validation, large file check
+
+```bash
+# Install pre-commit hooks
+pre-commit install
+```
 
 ## Known Behavior
 
