@@ -28,6 +28,10 @@ def load_config(config_path: str | Path = "config.yaml") -> dict[str, Any]:
         with open(path) as f:
             user_config = yaml.safe_load(f) or {}
         config = _deep_merge(config, user_config)
+    elif Path("config.example.yaml").exists():
+        with open("config.example.yaml") as f:
+            user_config = yaml.safe_load(f) or {}
+        config = _deep_merge(config, user_config)
     return config
 
 

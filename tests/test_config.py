@@ -40,3 +40,13 @@ def test_deep_merge_new_keys():
     override = {"b": 2}
     result = _deep_merge(base, override)
     assert result == {"a": 1, "b": 2}
+
+
+def test_config_fallback_to_example(tmp_path, monkeypatch):
+    """When config.yaml missing, loads config.example.yaml."""
+    monkeypatch.chdir(tmp_path)
+    example = tmp_path / "config.example.yaml"
+    example.write_text("output_dir: ./example_output\n")
+    from podcast_cleaner.config import load_config
+    config = load_config("config.yaml")
+    assert config["output_dir"] == "./example_output"
