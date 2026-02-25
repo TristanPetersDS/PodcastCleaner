@@ -3,6 +3,8 @@ output_dir: "./output"
 download:
   format: "wav"
   quality: "best"
+  cookies_from_browser: "brave"
+  remote_components: true
 
 preprocess:
   sample_rate: 48000

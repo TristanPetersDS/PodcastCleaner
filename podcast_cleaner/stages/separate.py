@@ -34,13 +34,22 @@ def demucs_separate(audio_path: str, model_name: str, device: torch.device) -> d
         wav = wav.repeat(2, 1)
     wav = wav.unsqueeze(0).to(device)  # (1, channels, time)
 
+    # Clamp to avoid Demucs pad1d assertion errors with edge values
+    wav = wav.clamp(-0.999, 0.999)
+
     try:
-        sources = apply_model(model, wav, device=device)
-    except torch.cuda.OutOfMemoryError:
-        logger.warning("GPU OOM — falling back to CPU")
+        sources = apply_model(model, wav, device=device, split=True, overlap=0.25, shifts=1)
+    except (torch.cuda.OutOfMemoryError, AssertionError) as e:
+        if isinstance(e, AssertionError):
+            logger.warning("Demucs assertion error — retrying on CPU with explicit segment")
+        else:
+            logger.warning("GPU OOM — falling back to CPU")
+        import gc
         model.to("cpu")
         wav = wav.to("cpu")
-        sources = apply_model(model, wav, device="cpu")
+        gc.collect()
+        torch.cuda.empty_cache()
+        sources = apply_model(model, wav, device="cpu", split=True, overlap=0.25, shifts=0)
 
     # sources shape: (1, num_sources, channels, time)
     # Find vocals index from model.sources

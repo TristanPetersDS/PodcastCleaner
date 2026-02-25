@@ -49,6 +49,7 @@ def run_preprocess(
         write_audio(str(out_path), audio, target_sr)
         duration = len(audio) / target_sr
         log.info(f"  Output: {out_path.name} ({duration:.1f}s, {target_sr}Hz, mono, float32)")
+        del audio  # Free memory before stats computation
 
         # Analyze
         stats = compute_stats(str(out_path))

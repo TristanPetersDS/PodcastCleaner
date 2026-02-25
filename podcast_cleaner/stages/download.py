@@ -22,13 +22,33 @@ def _ytdlp_cmd() -> str:
     return shutil.which("yt-dlp") or "yt-dlp"
 
 
-def get_playlist_entries(url: str) -> list[dict]:
+def _ytdlp_env() -> dict[str, str]:
+    """Return an env dict that includes deno on PATH if installed."""
+    import os
+    env = os.environ.copy()
+    deno_bin = Path.home() / ".deno" / "bin"
+    if deno_bin.is_dir():
+        env["PATH"] = f"{deno_bin}:{env.get('PATH', '')}"
+    return env
+
+
+def _ytdlp_extra_args(config: dict) -> list[str]:
+    """Return extra yt-dlp args for cookies and JS solver from config."""
+    dl = config.get("download", {})
+    args: list[str] = []
+    browser = dl.get("cookies_from_browser")
+    if browser:
+        args += ["--cookies-from-browser", browser]
+    if dl.get("remote_components", True):
+        args += ["--remote-components", "ejs:github"]
+    return args
+
+
+def get_playlist_entries(url: str, config: dict | None = None) -> list[dict]:
     """Fetch playlist metadata without downloading."""
-    result = subprocess.run(
-        [_ytdlp_cmd(), "--flat-playlist", "--dump-json", url],
-        capture_output=True,
-        text=True,
-    )
+    cfg = config or {}
+    cmd = [_ytdlp_cmd()] + _ytdlp_extra_args(cfg) + ["--flat-playlist", "--dump-json", url]
+    result = subprocess.run(cmd, capture_output=True, text=True, env=_ytdlp_env())
     if result.returncode != 0:
         logger.error(f"yt-dlp metadata fetch failed: {result.stderr[:500]}")
         return []
@@ -60,14 +80,17 @@ def download_single(
     url: str,
     output_dir: str,
     format_pref: str = "wav",
+    config: dict | None = None,
 ) -> str | None:
     """Download a single video's audio track.
 
     Returns path to the downloaded file, or None on failure.
     """
+    cfg = config or {}
     output_template = str(Path(output_dir) / "%(title)s.%(ext)s")
     cmd = [
         _ytdlp_cmd(),
+        *_ytdlp_extra_args(cfg),
         "-x",
         "--audio-format", format_pref,
         "--audio-quality", "0",
@@ -76,7 +99,7 @@ def download_single(
         url,
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, env=_ytdlp_env())
     if result.returncode != 0:
         logger.error(f"yt-dlp failed: {result.stderr[:500]}")
         return None
@@ -105,7 +128,7 @@ def run_download(
     dl_config = config.get("download", {})
     format_pref = dl_config.get("format", "wav")
 
-    entries = get_playlist_entries(url)
+    entries = get_playlist_entries(url, config)
 
     if not entries:
         # Might be a single video — try direct download
@@ -130,7 +153,7 @@ def run_download(
             continue
 
         video_url = entry.get("_url", f"https://www.youtube.com/watch?v={entry['id']}")
-        result = download_single(video_url, str(raw_dir), format_pref)
+        result = download_single(video_url, str(raw_dir), format_pref, config)
 
         if result:
             mark_done(episode_dir, "download")

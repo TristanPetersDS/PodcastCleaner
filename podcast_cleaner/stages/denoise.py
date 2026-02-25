@@ -56,6 +56,9 @@ def deepfilter_enhance(audio_path: str) -> tuple[np.ndarray, int]:
             audio, _ = load_audio(audio_path, sr=sr)
             enhanced = enhance(model, df_state, audio)
         enhanced_np = enhanced.squeeze().numpy() if hasattr(enhanced, "numpy") else np.array(enhanced)
+        if np.any(np.isnan(enhanced_np)):
+            logger.warning("  NaN values in output — replacing with zeros")
+            enhanced_np = np.nan_to_num(enhanced_np, nan=0.0)
         return enhanced_np, sr
 
     # Chunked processing for long files
@@ -82,6 +85,11 @@ def deepfilter_enhance(audio_path: str) -> tuple[np.ndarray, int]:
             enhanced_chunk = enhance(model, df_state, chunk)
 
         chunk_np = enhanced_chunk.squeeze().numpy() if hasattr(enhanced_chunk, "numpy") else np.array(enhanced_chunk)
+
+        # Sanitize NaN values that DeepFilterNet can produce
+        if np.any(np.isnan(chunk_np)):
+            logger.warning(f"  NaN values in chunk at pos={pos} — replacing with zeros")
+            chunk_np = np.nan_to_num(chunk_np, nan=0.0)
 
         if pos == 0:
             enhanced_chunks.append(chunk_np)

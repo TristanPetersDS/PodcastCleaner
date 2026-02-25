@@ -77,15 +77,27 @@ def measure_snr(audio: np.ndarray, sr: int) -> float:
 
 
 def measure_spectral_centroid(audio: np.ndarray, sr: int) -> float:
-    """Compute spectral centroid (brightness measure) in Hz."""
-    # Use a single FFT over the full signal
-    spectrum = np.abs(np.fft.rfft(audio))
-    freqs = np.fft.rfftfreq(len(audio), d=1.0 / sr)
-    total_energy = np.sum(spectrum)
-    if total_energy < 1e-10:
+    """Compute spectral centroid (brightness measure) in Hz.
+
+    Uses windowed FFTs averaged over the signal to avoid allocating a
+    massive array for the full-signal FFT on long recordings.
+    """
+    win_size = min(8192, len(audio))
+    hop = win_size // 2
+    freqs = np.fft.rfftfreq(win_size, d=1.0 / sr)
+    weighted_sum = 0.0
+    energy_sum = 0.0
+
+    for start in range(0, len(audio) - win_size + 1, hop):
+        spectrum = np.abs(np.fft.rfft(audio[start : start + win_size]))
+        energy = np.sum(spectrum)
+        if energy > 1e-10:
+            weighted_sum += float(np.sum(freqs * spectrum))
+            energy_sum += float(energy)
+
+    if energy_sum < 1e-10:
         return 0.0
-    centroid = float(np.sum(freqs * spectrum) / total_energy)
-    return round(centroid, 1)
+    return round(weighted_sum / energy_sum, 1)
 
 
 def compute_stats(audio_path: str) -> dict:
