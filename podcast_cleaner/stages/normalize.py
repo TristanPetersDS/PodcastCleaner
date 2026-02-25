@@ -20,18 +20,46 @@ from podcast_cleaner.utils import (
 logger = logging.getLogger(__name__)
 
 
-def true_peak_limit(audio: np.ndarray, max_dbtp: float = -1.5) -> np.ndarray:
-    """Apply simple true peak limiting.
+def _true_peak_limit_legacy(audio: np.ndarray, max_dbtp: float = -1.5) -> np.ndarray:
+    """Apply simple true peak limiting (legacy — kept for rollback).
 
     Scales the entire signal down so that the peak does not exceed
     *max_dbtp* dBTP.  If the signal is already below the threshold
     it is returned unchanged.
+
+    .. deprecated::
+        This function scales the ENTIRE signal based on a single peak,
+        which undoes loudness normalization for high-crest-factor audio.
+        Use :func:`soft_clip_peaks` instead.
     """
     max_linear = 10 ** (max_dbtp / 20.0)
     peak = float(np.max(np.abs(audio)))
     if peak > max_linear:
         audio = audio * (max_linear / peak)
     return audio
+
+
+def soft_clip_peaks(audio: np.ndarray, max_dbtp: float = -1.5) -> np.ndarray:
+    """Soft-clip samples exceeding the true peak threshold.
+
+    Only samples whose absolute value exceeds the linear threshold are
+    affected.  Those samples are replaced with a tanh-based soft-clip
+    that smoothly compresses them toward the threshold, preserving
+    signal polarity.  Samples below the threshold pass through unchanged.
+
+    This preserves the loudness of the body of the signal while taming
+    transient peaks — unlike the legacy global-scale approach.
+    """
+    threshold = 10 ** (max_dbtp / 20.0)
+    result = audio.copy()
+    above = np.abs(audio) > threshold
+    if np.any(above):
+        result[above] = (
+            np.sign(audio[above])
+            * threshold
+            * np.tanh(np.abs(audio[above]) / threshold)
+        )
+    return result
 
 
 def run_normalize(
@@ -42,8 +70,17 @@ def run_normalize(
     """Normalize audio loudness to podcast standard.
 
     Reads denoised (or separated vocal) audio, normalizes to the target
-    LUFS using *pyloudnorm*, applies true-peak limiting, and writes the
-    results to the ``normalized/`` sub-directory.
+    LUFS using *pyloudnorm*, applies selective soft-clipping for peak
+    control, and writes the results to the ``normalized/`` sub-directory.
+
+    Algorithm:
+      1. Apply ``pyloudnorm.normalize.loudness()`` to reach target LUFS.
+      2. Soft-clip peaks exceeding the true peak threshold using
+         selective tanh compression (only affects samples above threshold).
+      3. Re-measure LUFS.  If more than 1 dB off target, apply iterative
+         correction passes (loudness normalize + soft-clip) until within
+         tolerance (up to 5 passes).
+      4. Hard-clip at +/-1.0 to prevent downstream clipping.
     """
     log = stage_logger or logger
     episode_path = Path(episode_dir)
@@ -79,8 +116,27 @@ def run_normalize(
             log.warning("  Cannot measure loudness (silence?) — skipping")
             continue
 
+        # Pass 1: loudness normalize then soft-clip peaks
         normalized = pyln.normalize.loudness(audio, current_lufs, target_lufs)
-        normalized = true_peak_limit(normalized, max_dbtp=target_tp)
+        normalized = soft_clip_peaks(normalized, max_dbtp=target_tp)
+
+        # Iterative correction: soft-clipping can pull LUFS below target
+        # on high-crest-factor audio. Re-normalize and re-clip until within
+        # 1 dB of target (up to 5 correction passes to guarantee convergence).
+        max_correction_passes = 5
+        for pass_num in range(max_correction_passes):
+            post_lufs = meter.integrated_loudness(normalized)
+            if np.isinf(post_lufs) or abs(post_lufs - target_lufs) <= 1.0:
+                break
+            log.info(
+                f"  Correction pass {pass_num + 1}: post-clip LUFS "
+                f"{post_lufs:.1f} dB, re-normalizing to {target_lufs} LUFS"
+            )
+            normalized = pyln.normalize.loudness(normalized, post_lufs, target_lufs)
+            normalized = soft_clip_peaks(normalized, max_dbtp=target_tp)
+
+        # Hard-clip safety net — prevent any sample from exceeding ±1.0
+        normalized = np.clip(normalized, -1.0, 1.0)
 
         stem = audio_path.stem.replace("_denoised", "").replace("_vocals", "")
         out_path = out_dir / f"{stem}_normalized.wav"
