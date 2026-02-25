@@ -1,0 +1,31 @@
+# PodcastCleaner Docker Compose
+#
+# Usage:
+#   GPU:  docker compose run --rm podcast-cleaner run --url "..."
+#   CPU:  docker compose run --rm podcast-cleaner run --url "..."
+#         (same command — just slower without GPU)
+#
+# Setup:
+#   1. Copy config.example.yaml to config.yaml and edit
+#   2. docker compose build
+#   3. docker compose run --rm podcast-cleaner run --url "YOUR_URL"
+
+services:
+  podcast-cleaner:
+    build: .
+    volumes:
+      - ./output:/app/output
+      - ./config.yaml:/app/config.yaml:ro
+      # Optional: mount cookies file for yt-dlp authentication
+      # - ./cookies.txt:/app/cookies.txt:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    # Override default entrypoint args
+    # command: ["run", "--url", "https://youtube.com/..."]
