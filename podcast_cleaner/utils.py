@@ -8,11 +8,12 @@ from pathlib import Path
 
 import numpy as np
 import soundfile as sf
-import torch
 
 
-def get_device(preference: str = "auto") -> torch.device:
+def get_device(preference: str = "auto"):
     """Resolve 'auto' to CUDA if available, else CPU."""
+    import torch
+
     if preference == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return torch.device(preference)
@@ -43,6 +44,7 @@ def read_audio(path: str | Path, target_sr: int | None = None) -> tuple[np.ndarr
     if audio.ndim > 1:
         audio = np.mean(audio, axis=1)  # stereo → mono
     if target_sr and sr != target_sr:
+        import torch
         import torchaudio
         waveform = torch.from_numpy(audio).unsqueeze(0)
         resampled = torchaudio.functional.resample(waveform, sr, target_sr)
