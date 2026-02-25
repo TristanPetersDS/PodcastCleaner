@@ -5,13 +5,74 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+import numpy as np
+
 from podcast_cleaner.analysis.audio_stats import compute_stats, save_stage_report
 from podcast_cleaner.utils import ensure_dir, get_device, is_done, mark_done
 
 logger = logging.getLogger(__name__)
 
 
-def demucs_separate(audio_path: str, model_name: str, device) -> dict:
+def _split_audio_segments(
+    audio: np.ndarray, max_segment_samples: int, overlap_samples: int
+) -> list[np.ndarray]:
+    """Split audio into overlapping segments for chunked processing."""
+    total = len(audio)
+    if total <= max_segment_samples:
+        return [audio]
+
+    segments = []
+    pos = 0
+    step = max_segment_samples - overlap_samples
+
+    while pos < total:
+        end = min(pos + max_segment_samples, total)
+        segments.append(audio[pos:end])
+        if end >= total:
+            break
+        pos += step
+
+    return segments
+
+
+def _crossfade_segments(
+    segments: list[np.ndarray], overlap_samples: int
+) -> np.ndarray:
+    """Reassemble segments with Hann-windowed crossfade."""
+    if len(segments) == 1:
+        return segments[0]
+
+    # Raised-cosine (Hann) crossfade: sin^2 + cos^2 = 1.0 at all points
+    t = np.linspace(0.0, 0.5 * np.pi, overlap_samples, dtype=np.float32)
+    fade_in = np.sin(t) ** 2
+    fade_out = np.cos(t) ** 2
+
+    result_parts = []
+    for i, seg in enumerate(segments):
+        if i == 0:
+            tail = seg[-overlap_samples:].copy()
+            tail *= fade_out
+            result_parts.append(seg[:-overlap_samples])
+            result_parts.append(tail)
+        elif i == len(segments) - 1:
+            head = seg[:overlap_samples].copy()
+            head *= fade_in
+            result_parts[-1] = result_parts[-1] + head
+            result_parts.append(seg[overlap_samples:])
+        else:
+            head = seg[:overlap_samples].copy()
+            head *= fade_in
+            result_parts[-1] = result_parts[-1] + head
+            body = seg[overlap_samples:-overlap_samples]
+            result_parts.append(body)
+            tail = seg[-overlap_samples:].copy()
+            tail *= fade_out
+            result_parts.append(tail)
+
+    return np.concatenate(result_parts)
+
+
+def demucs_separate(audio_path: str, model_name: str, device, max_segment_minutes: float = 10) -> dict:
     """Run Demucs separation on a single audio file.
 
     Returns dict with 'vocals', 'no_vocals' tensors and 'sample_rate'.
@@ -106,7 +167,8 @@ def run_separate(
 
     for wav_path in wav_files:
         log.info(f"Separating: {wav_path.name}")
-        result = demucs_separate(str(wav_path), model_name, device)
+        max_seg = sep_config.get("max_segment_minutes", 10)
+        result = demucs_separate(str(wav_path), model_name, device, max_segment_minutes=max_seg)
 
         stem = wav_path.stem
         sr = result["sample_rate"]
