@@ -9,6 +9,7 @@ import click
 
 from podcast_cleaner.config import load_config
 from podcast_cleaner.stages import STAGE_ORDER
+from podcast_cleaner.utils import AUDIO_EXTENSIONS
 
 
 def run_pipeline(
@@ -112,9 +113,8 @@ def run(url, input_dir, input_file, config_path, skip, resume):
         from podcast_cleaner.utils import ensure_dir
 
         input_path = Path(input_dir).resolve()
-        audio_exts = {".wav", ".mp3", ".flac", ".m4a", ".ogg", ".opus", ".aac"}
         for i, f in enumerate(sorted(input_path.iterdir())):
-            if f.suffix.lower() in audio_exts:
+            if f.suffix.lower() in AUDIO_EXTENSIONS:
                 dirname = build_episode_dirname(f.stem, i)
                 ep_dir = ensure_dir(Path(output_base) / dirname)
                 raw_dir = ensure_dir(ep_dir / "raw")

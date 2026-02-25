@@ -10,6 +10,8 @@ import numpy as np
 import soundfile as sf
 import torch
 
+AUDIO_EXTENSIONS = {".wav", ".mp3", ".flac", ".m4a", ".ogg", ".opus", ".aac"}
+
 
 def get_device(preference: str = "auto") -> torch.device:
     """Resolve 'auto' to CUDA if available, else CPU."""
