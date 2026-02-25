@@ -10,6 +10,7 @@ import click
 from podcast_cleaner.config import load_config
 from podcast_cleaner.display import console
 from podcast_cleaner.stages import STAGE_ORDER
+from podcast_cleaner.tracker import PipelineTracker
 from podcast_cleaner.utils import AUDIO_EXTENSIONS
 
 
@@ -40,13 +41,18 @@ def run_pipeline(
         "export": run_export,
     }
 
+    tracker = PipelineTracker(console, total_episodes=len(episode_dirs))
     successes: list[str] = []
-    failures: list[tuple[str, str]] = []
 
     for episode_dir in episode_dirs:
         ep_name = Path(episode_dir).name
         stage_logger = setup_logging(Path(episode_dir) / "processing.log", ep_name)
         stage_logger.info(f"=== Processing: {ep_name} ===")
+
+        active_stages = [
+            s for s in STAGE_ORDER if s != "download" and s not in skip_stages
+        ]
+        tracker.start_episode(ep_name, len(active_stages))
 
         try:
             for stage_name in STAGE_ORDER:
@@ -61,23 +67,21 @@ def run_pipeline(
                     clear_done(episode_dir, stage_name)
 
                 stage_logger.info(f"--- Stage: {stage_name} ---")
+                tracker.start_stage(stage_name)
                 runner = stage_runners.get(stage_name)
                 if runner:
                     runner(episode_dir, config, stage_logger=stage_logger)
+                tracker.complete_stage()
 
             stage_logger.info(f"=== Complete: {ep_name} ===")
+            tracker.complete_episode()
             successes.append(episode_dir)
 
         except Exception as e:
             stage_logger.error(f"Pipeline failed for {ep_name}: {e}", exc_info=True)
-            failures.append((ep_name, str(e)))
+            tracker.fail_episode(str(e))
 
-    # Summary
-    console.print(f"\n{'=' * 40}")
-    console.print(f"Processed: {len(successes)} succeeded, {len(failures)} failed")
-    for name, err in failures:
-        console.print(f"  FAILED: {name} — {err}")
-
+    tracker.print_summary()
     return successes
 
 
