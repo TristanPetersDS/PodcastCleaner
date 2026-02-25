@@ -38,7 +38,15 @@ def whisperx_transcribe(audio_path: str, model_size: str, device: str) -> dict:
 
     Returns dict with 'segments' and 'language'.
     """
+    import gc
+
+    import torch
     import whisperx
+
+    # Free GPU memory from prior stages before loading whisper model
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     compute_type = "float16" if "cuda" in device else "int8"
     model = whisperx.load_model(model_size, device, compute_type=compute_type)
@@ -46,6 +54,12 @@ def whisperx_transcribe(audio_path: str, model_size: str, device: str) -> dict:
     result = model.transcribe(audio, batch_size=16)
 
     detected_lang = result.get("language", "en")
+
+    # Free transcription model before loading alignment model
+    del model
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     # Align word-level timestamps
     model_a, metadata = whisperx.load_align_model(language_code=detected_lang, device=device)
@@ -57,6 +71,12 @@ def whisperx_transcribe(audio_path: str, model_size: str, device: str) -> dict:
         device,
         return_char_alignments=False,
     )
+
+    # Free alignment model
+    del model_a
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     return {
         "segments": result.get("segments", []),

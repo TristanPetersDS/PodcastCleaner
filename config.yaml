@@ -18,7 +18,7 @@ denoise:
   model: "DeepFilterNet3"
 
 transcription:
-  enabled: false
+  enabled: true
   model: "large-v3"
   language: null
   device: "auto"

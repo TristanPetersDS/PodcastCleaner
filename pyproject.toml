@@ -27,6 +27,9 @@ transcribe = ["whisperx>=3.1"]
 dev = ["pytest>=7.0", "pytest-cov", "pytest-mock"]
 all = ["podcast-cleaner[transcribe,dev]"]
 
+[tool.setuptools.packages.find]
+include = ["podcast_cleaner*"]
+
 [project.scripts]
 podcast-cleaner = "podcast_cleaner.cli:main"
 

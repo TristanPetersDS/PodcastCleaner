@@ -108,32 +108,32 @@ def run(url, input_dir, input_file, config_path, skip, resume):
         episode_dirs = run_download(url, output_base, config, stage_logger=dl_logger)
 
     elif input_dir:
-        import shutil
-
         from podcast_cleaner.stages.download import build_episode_dirname
         from podcast_cleaner.utils import ensure_dir
 
-        input_path = Path(input_dir)
+        input_path = Path(input_dir).resolve()
         audio_exts = {".wav", ".mp3", ".flac", ".m4a", ".ogg", ".opus", ".aac"}
         for i, f in enumerate(sorted(input_path.iterdir())):
             if f.suffix.lower() in audio_exts:
                 dirname = build_episode_dirname(f.stem, i)
                 ep_dir = ensure_dir(Path(output_base) / dirname)
                 raw_dir = ensure_dir(ep_dir / "raw")
-                shutil.copy2(str(f), str(raw_dir / f.name))
+                dest = raw_dir / f.name
+                if not dest.exists():
+                    dest.symlink_to(f.resolve())
                 episode_dirs.append(str(ep_dir))
 
     elif input_file:
-        import shutil
-
         from podcast_cleaner.stages.download import build_episode_dirname
         from podcast_cleaner.utils import ensure_dir
 
-        f = Path(input_file)
+        f = Path(input_file).resolve()
         dirname = build_episode_dirname(f.stem, None)
         ep_dir = ensure_dir(Path(output_base) / dirname)
         raw_dir = ensure_dir(ep_dir / "raw")
-        shutil.copy2(str(f), str(raw_dir / f.name))
+        dest = raw_dir / f.name
+        if not dest.exists():
+            dest.symlink_to(f)
         episode_dirs.append(str(ep_dir))
 
     else:
