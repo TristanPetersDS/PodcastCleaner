@@ -12,6 +12,9 @@ from podcast_cleaner.utils import ensure_dir, is_done, mark_done, write_audio
 
 logger = logging.getLogger(__name__)
 
+# Module-level flag: once we fall back to CPU, stay on CPU for all future calls
+_fallen_back_to_cpu = False
+
 
 def deepfilter_enhance(audio_path: str) -> tuple[np.ndarray, int]:
     """Run DeepFilterNet3 enhancement on an audio file.
@@ -19,10 +22,16 @@ def deepfilter_enhance(audio_path: str) -> tuple[np.ndarray, int]:
     Processes in 60-second chunks with 0.5s overlap to avoid OOM on long files.
     Returns (enhanced_audio, sample_rate).
     """
+    global _fallen_back_to_cpu
     import gc
+    import os
 
     import torch
     from df.enhance import enhance, init_df, load_audio
+
+    # If we previously fell back to CPU, stay on CPU
+    if _fallen_back_to_cpu:
+        os.environ["DF_DEVICE"] = "cpu"
 
     # Clear GPU cache from previous stages
     if torch.cuda.is_available():
@@ -50,11 +59,11 @@ def deepfilter_enhance(audio_path: str) -> tuple[np.ndarray, int]:
             del model
             gc.collect()
             torch.cuda.empty_cache()
-            import os
             os.environ["DF_DEVICE"] = "cpu"
             model, df_state, _ = init_df()
             audio, _ = load_audio(audio_path, sr=sr)
             enhanced = enhance(model, df_state, audio)
+            _fallen_back_to_cpu = True
         enhanced_np = enhanced.squeeze().numpy() if hasattr(enhanced, "numpy") else np.array(enhanced)
         if np.any(np.isnan(enhanced_np)):
             logger.warning("  NaN values in output — replacing with zeros")
@@ -78,11 +87,13 @@ def deepfilter_enhance(audio_path: str) -> tuple[np.ndarray, int]:
             del model
             gc.collect()
             torch.cuda.empty_cache()
-            import os
             os.environ["DF_DEVICE"] = "cpu"
             model, df_state, _ = init_df()
-            chunk = chunk.cpu() if hasattr(chunk, "cpu") else chunk
+            # Move FULL audio tensor to CPU so all remaining chunks are CPU
+            audio = audio.cpu() if hasattr(audio, "cpu") else audio
+            chunk = audio[..., pos:end]
             enhanced_chunk = enhance(model, df_state, chunk)
+            _fallen_back_to_cpu = True
 
         chunk_np = enhanced_chunk.squeeze().numpy() if hasattr(enhanced_chunk, "numpy") else np.array(enhanced_chunk)
 
@@ -140,6 +151,11 @@ def run_denoise(
         log.info(f"  Denoising: {vocal_path.name}")
 
         enhanced, sr = deepfilter_enhance(str(vocal_path))
+
+        # Sanitize any NaN values from DeepFilterNet
+        if np.any(np.isnan(enhanced)):
+            log.warning("  NaN values in denoised output — replacing with zeros")
+            enhanced = np.nan_to_num(enhanced, nan=0.0)
 
         # Build output filename
         stem = vocal_path.stem.replace("_vocals", "")
