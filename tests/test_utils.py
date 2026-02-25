@@ -85,3 +85,18 @@ class TestEnsureDir:
         p = ensure_dir(tmp_path / "x")
         ensure_dir(tmp_path / "x")  # Should not raise
         assert p.is_dir()
+
+
+class TestLazyImports:
+    def test_cli_startup_fast(self):
+        """Importing podcast_cleaner.cli should NOT load torch."""
+        import subprocess
+        import sys
+
+        result = subprocess.run(
+            [sys.executable, "-c",
+             "import podcast_cleaner.cli; import sys; "
+             "assert 'torch' not in sys.modules, 'torch was eagerly imported'"],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert result.returncode == 0, f"torch eagerly imported: {result.stderr}"

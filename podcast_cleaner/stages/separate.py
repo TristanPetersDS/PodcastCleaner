@@ -5,20 +5,19 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-import torch
-import torchaudio
-
 from podcast_cleaner.analysis.audio_stats import compute_stats, save_stage_report
 from podcast_cleaner.utils import ensure_dir, get_device, is_done, mark_done
 
 logger = logging.getLogger(__name__)
 
 
-def demucs_separate(audio_path: str, model_name: str, device: torch.device) -> dict:
+def demucs_separate(audio_path: str, model_name: str, device) -> dict:
     """Run Demucs separation on a single audio file.
 
     Returns dict with 'vocals', 'no_vocals' tensors and 'sample_rate'.
     """
+    import torch
+    import torchaudio
     from demucs.apply import apply_model
     from demucs.pretrained import get_model
 
@@ -78,6 +77,9 @@ def run_separate(
     stage_logger: logging.Logger | None = None,
 ) -> None:
     """Separate vocals from background for all preprocessed audio."""
+    import torch
+    import torchaudio
+
     log = stage_logger or logger
     episode_path = Path(episode_dir)
     sep_config = config.get("separation", {})

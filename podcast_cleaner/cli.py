@@ -93,8 +93,12 @@ def main():
 @click.option("--config", "config_path", default="config.yaml", help="Path to config.yaml")
 @click.option("--skip", multiple=True, help="Skip a stage (can repeat)")
 @click.option("--resume", is_flag=True, help="Resume from last completed stage")
-def run(url, input_dir, input_file, config_path, skip, resume):
+@click.option("--cleanup-intermediates", is_flag=True, help="Delete intermediate stage dirs after success")
+def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermediates):
     """Run the full audio cleaning pipeline."""
+    if cleanup_intermediates and resume:
+        raise click.UsageError("Cannot use --cleanup-intermediates with --resume")
+
     config = load_config(config_path)
     output_base = config["output_dir"]
 
@@ -145,6 +149,16 @@ def run(url, input_dir, input_file, config_path, skip, resume):
 
     click.echo(f"Processing {len(episode_dirs)} episode(s)...")
     successes = run_pipeline(config, episode_dirs, skip_stages=skip, resume=resume)
+
+    if cleanup_intermediates:
+        import shutil
+
+        intermediate_dirs = ["preprocessed", "separated", "denoised", "normalized"]
+        for ep_dir in successes:
+            for dirname in intermediate_dirs:
+                d = Path(ep_dir) / dirname
+                if d.exists():
+                    shutil.rmtree(d)
 
     if len(successes) < len(episode_dirs):
         sys.exit(1)
