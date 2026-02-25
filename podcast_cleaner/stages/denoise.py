@@ -57,8 +57,11 @@ def deepfilter_enhance(audio_path: str, model=None, df_state=None) -> tuple[np.n
         try:
             with torch.backends.cudnn.flags(enabled=False):
                 enhanced = enhance(model, df_state, audio)
-        except (RuntimeError, torch.cuda.OutOfMemoryError):
-            logger.warning("GPU error — retrying DeepFilterNet on CPU")
+        except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
+            if isinstance(e, torch.cuda.OutOfMemoryError):
+                logger.warning("GPU memory exceeded for DeepFilterNet — falling back to CPU")
+            else:
+                logger.warning("GPU compatibility issue (cuDNN/GRU) — retrying DeepFilterNet on CPU")
             del model
             gc.collect()
             torch.cuda.empty_cache()
@@ -69,7 +72,7 @@ def deepfilter_enhance(audio_path: str, model=None, df_state=None) -> tuple[np.n
             _fallen_back_to_cpu = True
         enhanced_np = enhanced.squeeze().numpy() if hasattr(enhanced, "numpy") else np.array(enhanced)
         if np.any(np.isnan(enhanced_np)):
-            logger.warning("  NaN values in output — replacing with zeros")
+            logger.warning("  NaN values detected in DeepFilterNet output — replacing with zeros (audio quality may be affected)")
             enhanced_np = np.nan_to_num(enhanced_np, nan=0.0)
         return enhanced_np, sr
 
@@ -85,8 +88,11 @@ def deepfilter_enhance(audio_path: str, model=None, df_state=None) -> tuple[np.n
         try:
             with torch.backends.cudnn.flags(enabled=False):
                 enhanced_chunk = enhance(model, df_state, chunk)
-        except (RuntimeError, torch.cuda.OutOfMemoryError):
-            logger.warning("GPU error on chunk — retrying on CPU")
+        except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
+            if isinstance(e, torch.cuda.OutOfMemoryError):
+                logger.warning("GPU memory exceeded for DeepFilterNet chunk — falling back to CPU")
+            else:
+                logger.warning("GPU compatibility issue (cuDNN/GRU) on chunk — retrying DeepFilterNet on CPU")
             del model
             gc.collect()
             torch.cuda.empty_cache()
@@ -102,7 +108,7 @@ def deepfilter_enhance(audio_path: str, model=None, df_state=None) -> tuple[np.n
 
         # Sanitize NaN values that DeepFilterNet can produce
         if np.any(np.isnan(chunk_np)):
-            logger.warning(f"  NaN values in chunk at pos={pos} — replacing with zeros")
+            logger.warning(f"  NaN values detected in DeepFilterNet output chunk at pos={pos} — replacing with zeros (audio quality may be affected)")
             chunk_np = np.nan_to_num(chunk_np, nan=0.0)
 
         if pos == 0:
@@ -167,7 +173,7 @@ def run_denoise(
 
         # Sanitize any NaN values from DeepFilterNet
         if np.any(np.isnan(enhanced)):
-            log.warning("  NaN values in denoised output — replacing with zeros")
+            log.warning("  NaN values detected in DeepFilterNet output — replacing with zeros (audio quality may be affected)")
             enhanced = np.nan_to_num(enhanced, nan=0.0)
 
         # Build output filename
