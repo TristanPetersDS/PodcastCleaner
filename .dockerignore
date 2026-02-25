@@ -1,0 +1,14 @@
+output/
+downloads/
+.venv/
+.git/
+.claude/
+.cudnn8/
+*.pyc
+__pycache__/
+*.egg-info/
+*.wav
+*.mp3
+*.flac
+docs/
+tests/
