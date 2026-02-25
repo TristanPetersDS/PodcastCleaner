@@ -44,6 +44,21 @@ class TestAnalyzeCommand:
         assert result.exit_code != 0
 
 
+class TestCleanupIntermediates:
+    def test_cleanup_resume_conflict(self):
+        """--cleanup-intermediates and --resume should conflict."""
+        runner = CliRunner()
+        result = runner.invoke(main, ["run", "--input", __file__, "--cleanup-intermediates", "--resume"])
+        assert result.exit_code != 0
+        assert "Cannot use --cleanup-intermediates with --resume" in result.output
+
+    def test_cleanup_intermediates_flag_exists(self):
+        """The --cleanup-intermediates flag should appear in help."""
+        runner = CliRunner()
+        result = runner.invoke(main, ["run", "--help"])
+        assert "--cleanup-intermediates" in result.output
+
+
 class TestStageCommand:
     def test_stage_requires_name_and_dir(self, runner):
         result = runner.invoke(main, ["stage"])
