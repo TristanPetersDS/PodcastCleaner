@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 
 from podcast_cleaner.config import load_config
+from podcast_cleaner.display import console
 from podcast_cleaner.stages import STAGE_ORDER
 from podcast_cleaner.utils import AUDIO_EXTENSIONS
 
@@ -72,10 +73,10 @@ def run_pipeline(
             failures.append((ep_name, str(e)))
 
     # Summary
-    click.echo(f"\n{'=' * 40}")
-    click.echo(f"Processed: {len(successes)} succeeded, {len(failures)} failed")
+    console.print(f"\n{'=' * 40}")
+    console.print(f"Processed: {len(successes)} succeeded, {len(failures)} failed")
     for name, err in failures:
-        click.echo(f"  FAILED: {name} — {err}")
+        console.print(f"  FAILED: {name} — {err}")
 
     return successes
 
@@ -144,10 +145,10 @@ def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermedi
         raise click.UsageError("Provide --url, --input-dir, or --input")
 
     if not episode_dirs:
-        click.echo("No episodes to process.")
+        console.print("No episodes to process.")
         return
 
-    click.echo(f"Processing {len(episode_dirs)} episode(s)...")
+    console.print(f"Processing {len(episode_dirs)} episode(s)...")
     successes = run_pipeline(config, episode_dirs, skip_stages=skip, resume=resume)
 
     if cleanup_intermediates:
@@ -197,14 +198,14 @@ def analyze(episode_dir, config_path):
                 break
         stats = compute_stats(str(target))
         save_stage_report(str(report_path), stage_name, stats)
-        click.echo(
+        console.print(
             f"{stage_name:15s}  LUFS={stats['lufs']:6.1f}  "
             f"SNR={stats['snr_db']:5.1f}dB  "
             f"Peak={stats['true_peak']:5.1f}dBTP  "
             f"Duration={stats['duration']:.1f}s"
         )
 
-    click.echo(f"\nFull report: {report_path}")
+    console.print(f"\nFull report: {report_path}")
 
 
 @main.command()
@@ -237,4 +238,4 @@ def stage(stage_name, episode_dir, config_path):
     # Clear done marker so it re-runs
     clear_done(episode_dir, stage_name)
     runners[stage_name](episode_dir, config)
-    click.echo(f"Stage '{stage_name}' complete for {episode_dir}")
+    console.print(f"Stage '{stage_name}' complete for {episode_dir}")
