@@ -100,13 +100,18 @@ def measure_spectral_centroid(audio: np.ndarray, sr: int) -> float:
     return round(weighted_sum / energy_sum, 1)
 
 
-def compute_stats(audio_path: str) -> dict:
+def compute_stats(audio_path: str, audio_data: tuple[np.ndarray, int] | None = None) -> dict:
     """Compute all audio quality metrics for a file.
 
-    Returns a dict with keys: lufs, true_peak, rms_db, snr_db,
-    spectral_centroid, duration.
+    Args:
+        audio_path: Path to the audio file (used if audio_data is None)
+        audio_data: Optional (audio_array, sample_rate) tuple to skip disk read
     """
-    audio, sr = sf.read(audio_path, dtype="float32")
+    if audio_data is not None:
+        audio, sr = audio_data
+    else:
+        audio, sr = sf.read(audio_path, dtype="float32")
+
     if audio.ndim > 1:
         audio = np.mean(audio, axis=1)
 

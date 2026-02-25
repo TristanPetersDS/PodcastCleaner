@@ -109,3 +109,16 @@ class TestSaveReport:
         data = json.loads(report_path.read_text())
         assert "raw" in data["stages"]
         assert "denoised" in data["stages"]
+
+
+class TestComputeStatsInMemory:
+    def test_compute_stats_inmemory_matches_disk(self, sine_440):
+        """In-memory stats should match disk-read stats exactly."""
+        path, audio, sr = sine_440
+        disk_stats = compute_stats(str(path))
+        mem_stats = compute_stats(str(path), audio_data=(audio, sr))
+
+        for key in disk_stats:
+            assert disk_stats[key] == mem_stats[key], (
+                f"Mismatch for {key}: disk={disk_stats[key]}, mem={mem_stats[key]}"
+            )
