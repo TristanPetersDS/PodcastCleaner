@@ -103,9 +103,9 @@ def demucs_separate(audio_path: str, model_name: str, device, model=None, max_se
         sources = apply_model(model, wav, device=device, split=True, overlap=0.25, shifts=1)
     except (torch.cuda.OutOfMemoryError, AssertionError) as e:
         if isinstance(e, AssertionError):
-            logger.warning("Demucs assertion error — retrying on CPU with explicit segment")
+            logger.warning("Demucs assertion error (audio may be too long for GPU memory) — retrying on CPU")
         else:
-            logger.warning("GPU OOM — falling back to CPU")
+            logger.warning("GPU memory exceeded for Demucs separation — falling back to CPU (this will be slower)")
         import gc
         model.to("cpu")
         wav = wav.to("cpu")
