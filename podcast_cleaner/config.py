@@ -12,7 +12,7 @@ DEFAULT_CONFIG = {
     "output_dir": "./output",
     "download": {"format": "wav", "quality": "best"},
     "preprocess": {"sample_rate": 48000, "channels": 1},
-    "separation": {"model": "htdemucs_ft", "device": "auto"},
+    "separation": {"model": "htdemucs_ft", "device": "auto", "max_segment_minutes": 10},
     "denoise": {"model": "DeepFilterNet3"},
     "transcription": {"enabled": True, "model": "large-v3", "language": None, "device": "auto"},
     "normalization": {"target_lufs": -16.0, "true_peak_dbtp": -1.5},
