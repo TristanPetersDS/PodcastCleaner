@@ -33,9 +33,10 @@ def segments_to_srt(segments: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def whisperx_transcribe(audio_path: str, model_size: str, device: str) -> dict:
+def whisperx_transcribe(audio_path: str, model_size: str, device: str, model=None) -> dict:
     """Run WhisperX transcription + alignment on an audio file.
 
+    If *model* is provided it is reused instead of loading a fresh copy.
     Returns dict with 'segments' and 'language'.
     """
     import gc
@@ -49,14 +50,17 @@ def whisperx_transcribe(audio_path: str, model_size: str, device: str) -> dict:
         torch.cuda.empty_cache()
 
     compute_type = "float16" if "cuda" in device else "int8"
-    model = whisperx.load_model(model_size, device, compute_type=compute_type)
+    model_was_loaded = model is None
+    if model is None:
+        model = whisperx.load_model(model_size, device, compute_type=compute_type)
     audio = whisperx.load_audio(audio_path)
     result = model.transcribe(audio, batch_size=16)
 
     detected_lang = result.get("language", "en")
 
-    # Free transcription model before loading alignment model
-    del model
+    # Free transcription model before loading alignment model (only if we created it)
+    if model_was_loaded:
+        del model
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()

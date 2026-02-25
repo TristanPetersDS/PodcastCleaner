@@ -16,10 +16,12 @@ logger = logging.getLogger(__name__)
 _fallen_back_to_cpu = False
 
 
-def deepfilter_enhance(audio_path: str) -> tuple[np.ndarray, int]:
+def deepfilter_enhance(audio_path: str, model=None, df_state=None) -> tuple[np.ndarray, int]:
     """Run DeepFilterNet3 enhancement on an audio file.
 
-    Processes in 60-second chunks with 0.5s overlap to avoid OOM on long files.
+    If *model* and *df_state* are provided they are reused instead of
+    loading a fresh copy.  Processes in 60-second chunks with 0.5s
+    overlap to avoid OOM on long files.
     Returns (enhanced_audio, sample_rate).
     """
     global _fallen_back_to_cpu
@@ -38,7 +40,8 @@ def deepfilter_enhance(audio_path: str) -> tuple[np.ndarray, int]:
         gc.collect()
         torch.cuda.empty_cache()
 
-    model, df_state, _ = init_df()
+    if model is None or df_state is None:
+        model, df_state, _ = init_df()
     sr = df_state.sr()
     audio, _ = load_audio(audio_path, sr=sr)
 
@@ -122,6 +125,13 @@ def deepfilter_enhance(audio_path: str) -> tuple[np.ndarray, int]:
     return np.concatenate(enhanced_chunks), sr
 
 
+def _load_deepfilter_model():
+    """Load the DeepFilterNet3 model and return (model, df_state)."""
+    from df.enhance import init_df
+    model, df_state, _ = init_df()
+    return model, df_state
+
+
 def run_denoise(
     episode_dir: str,
     config: dict,
@@ -147,10 +157,13 @@ def run_denoise(
     out_dir = ensure_dir(episode_path / "denoised")
     log.info(f"Denoising {len(vocal_files)} file(s)...")
 
+    # Load the DeepFilterNet model once for all files in this episode
+    model, df_state = _load_deepfilter_model()
+
     for vocal_path in vocal_files:
         log.info(f"  Denoising: {vocal_path.name}")
 
-        enhanced, sr = deepfilter_enhance(str(vocal_path))
+        enhanced, sr = deepfilter_enhance(str(vocal_path), model=model, df_state=df_state)
 
         # Sanitize any NaN values from DeepFilterNet
         if np.any(np.isnan(enhanced)):

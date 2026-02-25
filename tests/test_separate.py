@@ -1,6 +1,6 @@
 """Tests for the separation stage."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import soundfile as sf
@@ -11,7 +11,8 @@ from podcast_cleaner.utils import is_done
 
 class TestRunSeparate:
     @patch("podcast_cleaner.stages.separate.demucs_separate")
-    def test_creates_output_files(self, mock_demucs, tmp_path):
+    @patch("podcast_cleaner.stages.separate._load_demucs_model")
+    def test_creates_output_files(self, mock_load_model, mock_demucs, tmp_path):
         """Should create vocals and background WAVs."""
         sr = 44100
         audio = np.sin(np.linspace(0, 1, sr * 2)).astype(np.float32)
@@ -19,6 +20,9 @@ class TestRunSeparate:
         pre_dir = episode_dir / "preprocessed"
         pre_dir.mkdir(parents=True)
         sf.write(str(pre_dir / "test.wav"), audio, sr)
+
+        # Mock model loading
+        mock_load_model.return_value = MagicMock()
 
         # Mock demucs to produce fake stems
         import torch

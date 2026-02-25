@@ -72,18 +72,20 @@ def _crossfade_segments(
     return np.concatenate(result_parts)
 
 
-def demucs_separate(audio_path: str, model_name: str, device, max_segment_minutes: float = 10) -> dict:
+def demucs_separate(audio_path: str, model_name: str, device, model=None, max_segment_minutes: float = 10) -> dict:
     """Run Demucs separation on a single audio file.
 
     Returns dict with 'vocals', 'no_vocals' tensors and 'sample_rate'.
+    If *model* is provided it is reused instead of loading a fresh copy.
     """
     import torch
     import torchaudio
     from demucs.apply import apply_model
-    from demucs.pretrained import get_model
 
-    model = get_model(model_name)
-    model.to(device)
+    if model is None:
+        from demucs.pretrained import get_model
+        model = get_model(model_name)
+        model.to(device)
 
     # Load audio at the model's native sample rate
     wav, sr = torchaudio.load(audio_path)
@@ -132,6 +134,14 @@ def demucs_separate(audio_path: str, model_name: str, device, max_segment_minute
     }
 
 
+def _load_demucs_model(model_name: str, device):
+    """Load a Demucs model and move it to *device*."""
+    from demucs.pretrained import get_model
+    model = get_model(model_name)
+    model.to(device)
+    return model
+
+
 def run_separate(
     episode_dir: str,
     config: dict,
@@ -165,10 +175,13 @@ def run_separate(
 
     target_sr = config.get("preprocess", {}).get("sample_rate", 48000)
 
+    # Load the Demucs model once for all files in this episode
+    model = _load_demucs_model(model_name, device)
+
     for wav_path in wav_files:
         log.info(f"Separating: {wav_path.name}")
         max_seg = sep_config.get("max_segment_minutes", 10)
-        result = demucs_separate(str(wav_path), model_name, device, max_segment_minutes=max_seg)
+        result = demucs_separate(str(wav_path), model_name, device, model=model, max_segment_minutes=max_seg)
 
         stem = wav_path.stem
         sr = result["sample_rate"]
