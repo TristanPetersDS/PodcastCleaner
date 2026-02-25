@@ -21,20 +21,30 @@ def get_device(preference: str = "auto") -> torch.device:
 
 
 def setup_logging(log_path: str | Path, stage_name: str) -> logging.Logger:
-    """Configure a logger that writes to both file and stdout."""
-    logger = logging.getLogger(f"podcast_cleaner.{stage_name}")
-    if logger.handlers:
-        return logger  # Already configured
+    """Configure a logger that writes to both file and stdout.
+
+    Uses a fixed logger name to prevent handler accumulation across episodes.
+    """
+    logger = logging.getLogger("podcast_cleaner.pipeline")
     logger.setLevel(logging.INFO)
     fmt = logging.Formatter("%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 
+    # Close and remove existing file handlers
+    for handler in logger.handlers[:]:
+        if isinstance(handler, logging.FileHandler):
+            handler.close()
+            logger.removeHandler(handler)
+
+    # Add file handler for this episode
     fh = logging.FileHandler(str(log_path), mode="a")
     fh.setFormatter(fmt)
     logger.addHandler(fh)
 
-    sh = logging.StreamHandler(sys.stdout)
-    sh.setFormatter(fmt)
-    logger.addHandler(sh)
+    # Add console handler only once
+    if not any(isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler) for h in logger.handlers):
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setFormatter(fmt)
+        logger.addHandler(sh)
 
     return logger
 
