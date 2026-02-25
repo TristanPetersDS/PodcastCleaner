@@ -238,3 +238,58 @@ def stage(stage_name, episode_dir, config_path):
     clear_done(episode_dir, stage_name)
     runners[stage_name](episode_dir, config)
     click.echo(f"Stage '{stage_name}' complete for {episode_dir}")
+
+
+@main.command()
+def check():
+    """Check system dependencies and capabilities."""
+    import platform
+    import shutil
+    import subprocess
+
+    click.echo(f"Python: {platform.python_version()}")
+    click.echo(f"Platform: {platform.platform()}")
+
+    # Check ffmpeg
+    ffmpeg_path = shutil.which("ffmpeg")
+    if ffmpeg_path:
+        try:
+            result = subprocess.run(
+                ["ffmpeg", "-version"], capture_output=True, text=True, timeout=10
+            )
+            version_line = result.stdout.split("\n")[0] if result.stdout else "unknown"
+            click.echo(f"ffmpeg: {version_line}")
+        except Exception:
+            click.echo(f"ffmpeg: found at {ffmpeg_path} (version unknown)")
+    else:
+        click.echo("ffmpeg: NOT FOUND")
+
+    # Check GPU/CUDA
+    try:
+        import torch
+        cuda_available = torch.cuda.is_available()
+        if cuda_available:
+            gpu_name = torch.cuda.get_device_name(0)
+            click.echo(f"CUDA: available ({gpu_name})")
+        else:
+            click.echo("CUDA: not available (CPU only)")
+    except ImportError:
+        click.echo("PyTorch: NOT INSTALLED")
+
+    # Check yt-dlp
+    ytdlp_path = shutil.which("yt-dlp")
+    click.echo(f"yt-dlp: {'found' if ytdlp_path else 'NOT FOUND'}")
+
+    # Check ML libraries
+    for lib_name, import_name in [
+        ("Demucs", "demucs"),
+        ("DeepFilterNet", "df"),
+        ("WhisperX", "whisperx"),
+        ("pyloudnorm", "pyloudnorm"),
+        ("Rich", "rich"),
+    ]:
+        try:
+            __import__(import_name)
+            click.echo(f"{lib_name}: installed")
+        except ImportError:
+            click.echo(f"{lib_name}: NOT INSTALLED")

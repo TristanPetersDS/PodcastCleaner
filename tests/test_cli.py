@@ -63,3 +63,12 @@ class TestStageCommand:
     def test_stage_requires_name_and_dir(self, runner):
         result = runner.invoke(main, ["stage"])
         assert result.exit_code != 0
+
+
+class TestCheckCommand:
+    def test_check_command_output(self, runner):
+        """check command should report system dependencies."""
+        result = runner.invoke(main, ["check"])
+        assert result.exit_code == 0
+        assert "Python" in result.output
+        assert "ffmpeg" in result.output
