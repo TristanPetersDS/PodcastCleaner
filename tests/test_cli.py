@@ -72,3 +72,17 @@ class TestCheckCommand:
         assert result.exit_code == 0
         assert "Python" in result.output
         assert "ffmpeg" in result.output
+
+
+class TestRichConsole:
+    def test_rich_console_fallback_no_tty(self):
+        """Rich should use plain text when not a TTY."""
+        import subprocess, sys
+        result = subprocess.run(
+            [sys.executable, "-c",
+             "from podcast_cleaner.display import console; "
+             "assert not console.is_terminal"],
+            capture_output=True, text=True, timeout=30,
+        )
+        # When piped (capture_output), console should not be a terminal
+        assert result.returncode == 0, f"Failed: {result.stderr}"
