@@ -11,8 +11,14 @@ import yaml
 logger = logging.getLogger(__name__)
 
 KNOWN_TOP_LEVEL_KEYS = {
-    "output_dir", "download", "preprocess", "separation",
-    "denoise", "transcription", "normalization", "export",
+    "output_dir",
+    "download",
+    "preprocess",
+    "separation",
+    "denoise",
+    "transcription",
+    "normalization",
+    "export",
 }
 
 
@@ -22,7 +28,12 @@ DEFAULT_CONFIG = {
     "preprocess": {"sample_rate": 48000, "channels": 1},
     "separation": {"model": "htdemucs_ft", "device": "auto", "max_segment_minutes": 10},
     "denoise": {"model": "DeepFilterNet3"},
-    "transcription": {"enabled": True, "model": "large-v3", "language": None, "device": "auto"},
+    "transcription": {
+        "enabled": True,
+        "model": "large-v3",
+        "language": None,
+        "device": "auto",
+    },
     "normalization": {"target_lufs": -16.0, "true_peak_dbtp": -1.5},
     "export": {"formats": ["mp3", "flac"], "mp3_bitrate": "320k", "sample_rate": 48000},
 }

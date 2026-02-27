@@ -4,7 +4,10 @@ import numpy as np
 import pyloudnorm as pyln
 import soundfile as sf
 
-from podcast_cleaner.stages.normalize import run_normalize, _true_peak_limit_legacy as true_peak_limit
+from podcast_cleaner.stages.normalize import (
+    run_normalize,
+    _true_peak_limit_legacy as true_peak_limit,
+)
 from podcast_cleaner.utils import is_done
 
 
@@ -108,7 +111,9 @@ class TestNormalizationV2:
         out_audio, out_sr = sf.read(str(out))
         meter = pyln.Meter(out_sr)
         lufs = meter.integrated_loudness(out_audio)
-        assert -17.0 <= lufs <= -15.0, f"Output LUFS {lufs:.1f} not within ±1.0 dB of -16.0"
+        assert (
+            -17.0 <= lufs <= -15.0
+        ), f"Output LUFS {lufs:.1f} not within ±1.0 dB of -16.0"
 
     def test_normalization_idempotent(self, tmp_path):
         """Running normalization twice produces output within ±0.5 dB."""
@@ -134,7 +139,9 @@ class TestNormalizationV2:
         pass2_audio, _ = sf.read(str(ep2 / "normalized" / "test_normalized.wav"))
         pass2_lufs = meter.integrated_loudness(pass2_audio)
 
-        assert abs(pass1_lufs - pass2_lufs) <= 0.5, f"Not idempotent: pass1={pass1_lufs:.1f}, pass2={pass2_lufs:.1f}"
+        assert (
+            abs(pass1_lufs - pass2_lufs) <= 0.5
+        ), f"Not idempotent: pass1={pass1_lufs:.1f}, pass2={pass2_lufs:.1f}"
 
     def test_normalization_preserves_peak_limit(self, tmp_path):
         """Output true peak at or below -1.5 dBTP."""

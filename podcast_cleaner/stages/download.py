@@ -25,6 +25,7 @@ def _ytdlp_cmd() -> str:
 def _ytdlp_env() -> dict[str, str]:
     """Return an env dict that includes deno on PATH if installed."""
     import os
+
     env = os.environ.copy()
     deno_bin = Path.home() / ".deno" / "bin"
     if deno_bin.is_dir():
@@ -47,7 +48,11 @@ def _ytdlp_extra_args(config: dict) -> list[str]:
 def get_playlist_entries(url: str, config: dict | None = None) -> list[dict]:
     """Fetch playlist metadata without downloading."""
     cfg = config or {}
-    cmd = [_ytdlp_cmd()] + _ytdlp_extra_args(cfg) + ["--flat-playlist", "--dump-json", url]
+    cmd = (
+        [_ytdlp_cmd()]
+        + _ytdlp_extra_args(cfg)
+        + ["--flat-playlist", "--dump-json", url]
+    )
     result = subprocess.run(cmd, capture_output=True, text=True, env=_ytdlp_env())
     if result.returncode != 0:
         logger.error(f"yt-dlp metadata fetch failed: {result.stderr[:500]}")
@@ -92,10 +97,13 @@ def download_single(
         _ytdlp_cmd(),
         *_ytdlp_extra_args(cfg),
         "-x",
-        "--audio-format", format_pref,
-        "--audio-quality", "0",
+        "--audio-format",
+        format_pref,
+        "--audio-quality",
+        "0",
         "--no-playlist",
-        "-o", output_template,
+        "-o",
+        output_template,
         url,
     ]
 
@@ -106,7 +114,11 @@ def download_single(
 
     # Find the downloaded file (yt-dlp may change the extension)
     out_dir = Path(output_dir)
-    audio_files = list(out_dir.glob("*.wav")) + list(out_dir.glob("*.opus")) + list(out_dir.glob("*.m4a"))
+    audio_files = (
+        list(out_dir.glob("*.wav"))
+        + list(out_dir.glob("*.opus"))
+        + list(out_dir.glob("*.m4a"))
+    )
     if not audio_files:
         logger.error(f"No audio file found in {output_dir} after download")
         return None

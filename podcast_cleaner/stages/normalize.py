@@ -94,7 +94,9 @@ def run_normalize(
 
     # Find denoised audio
     denoised_dir = episode_path / "denoised"
-    audio_files = list(denoised_dir.glob("*_denoised.wav")) if denoised_dir.exists() else []
+    audio_files = (
+        list(denoised_dir.glob("*_denoised.wav")) if denoised_dir.exists() else []
+    )
     if not audio_files:
         # Fall back to separated vocals
         sep_dir = episode_path / "separated"

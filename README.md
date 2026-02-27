@@ -90,7 +90,7 @@ podcast-cleaner run --url "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 # Single file
 podcast-cleaner run --input /path/to/episode.wav
 
-# Directory of files
+# Directory of files (preserves existing NN_ prefixes in filenames)
 podcast-cleaner run --input-dir /path/to/episodes/
 ```
 

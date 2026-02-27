@@ -16,7 +16,9 @@ logger = logging.getLogger(__name__)
 _fallen_back_to_cpu = False
 
 
-def deepfilter_enhance(audio_path: str, model=None, df_state=None) -> tuple[np.ndarray, int]:
+def deepfilter_enhance(
+    audio_path: str, model=None, df_state=None
+) -> tuple[np.ndarray, int]:
     """Run DeepFilterNet3 enhancement on an audio file.
 
     If *model* and *df_state* are provided they are reused instead of
@@ -59,9 +61,13 @@ def deepfilter_enhance(audio_path: str, model=None, df_state=None) -> tuple[np.n
                 enhanced = enhance(model, df_state, audio)
         except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
             if isinstance(e, torch.cuda.OutOfMemoryError):
-                logger.warning("GPU memory exceeded for DeepFilterNet — falling back to CPU")
+                logger.warning(
+                    "GPU memory exceeded for DeepFilterNet — falling back to CPU"
+                )
             else:
-                logger.warning("GPU compatibility issue (cuDNN/GRU) — retrying DeepFilterNet on CPU")
+                logger.warning(
+                    "GPU compatibility issue (cuDNN/GRU) — retrying DeepFilterNet on CPU"
+                )
             del model
             gc.collect()
             torch.cuda.empty_cache()
@@ -70,14 +76,22 @@ def deepfilter_enhance(audio_path: str, model=None, df_state=None) -> tuple[np.n
             audio, _ = load_audio(audio_path, sr=sr)
             enhanced = enhance(model, df_state, audio)
             _fallen_back_to_cpu = True
-        enhanced_np = enhanced.squeeze().numpy() if hasattr(enhanced, "numpy") else np.array(enhanced)
+        enhanced_np = (
+            enhanced.squeeze().numpy()
+            if hasattr(enhanced, "numpy")
+            else np.array(enhanced)
+        )
         if np.any(np.isnan(enhanced_np)):
-            logger.warning("  NaN values detected in DeepFilterNet output — replacing with zeros (audio quality may be affected)")
+            logger.warning(
+                "  NaN values detected in DeepFilterNet output — replacing with zeros (audio quality may be affected)"
+            )
             enhanced_np = np.nan_to_num(enhanced_np, nan=0.0)
         return enhanced_np, sr
 
     # Chunked processing for long files
-    logger.info(f"  Processing in {chunk_seconds}s chunks ({total_samples / sr:.0f}s total)")
+    logger.info(
+        f"  Processing in {chunk_seconds}s chunks ({total_samples / sr:.0f}s total)"
+    )
     enhanced_chunks = []
     pos = 0
 
@@ -90,9 +104,13 @@ def deepfilter_enhance(audio_path: str, model=None, df_state=None) -> tuple[np.n
                 enhanced_chunk = enhance(model, df_state, chunk)
         except (RuntimeError, torch.cuda.OutOfMemoryError) as e:
             if isinstance(e, torch.cuda.OutOfMemoryError):
-                logger.warning("GPU memory exceeded for DeepFilterNet chunk — falling back to CPU")
+                logger.warning(
+                    "GPU memory exceeded for DeepFilterNet chunk — falling back to CPU"
+                )
             else:
-                logger.warning("GPU compatibility issue (cuDNN/GRU) on chunk — retrying DeepFilterNet on CPU")
+                logger.warning(
+                    "GPU compatibility issue (cuDNN/GRU) on chunk — retrying DeepFilterNet on CPU"
+                )
             del model
             gc.collect()
             torch.cuda.empty_cache()
@@ -104,11 +122,17 @@ def deepfilter_enhance(audio_path: str, model=None, df_state=None) -> tuple[np.n
             enhanced_chunk = enhance(model, df_state, chunk)
             _fallen_back_to_cpu = True
 
-        chunk_np = enhanced_chunk.squeeze().numpy() if hasattr(enhanced_chunk, "numpy") else np.array(enhanced_chunk)
+        chunk_np = (
+            enhanced_chunk.squeeze().numpy()
+            if hasattr(enhanced_chunk, "numpy")
+            else np.array(enhanced_chunk)
+        )
 
         # Sanitize NaN values that DeepFilterNet can produce
         if np.any(np.isnan(chunk_np)):
-            logger.warning(f"  NaN values detected in DeepFilterNet output chunk at pos={pos} — replacing with zeros (audio quality may be affected)")
+            logger.warning(
+                f"  NaN values detected in DeepFilterNet output chunk at pos={pos} — replacing with zeros (audio quality may be affected)"
+            )
             chunk_np = np.nan_to_num(chunk_np, nan=0.0)
 
         if pos == 0:
@@ -134,6 +158,7 @@ def deepfilter_enhance(audio_path: str, model=None, df_state=None) -> tuple[np.n
 def _load_deepfilter_model():
     """Load the DeepFilterNet3 model and return (model, df_state)."""
     from df.enhance import init_df
+
     model, df_state, _ = init_df()
     return model, df_state
 
@@ -169,11 +194,15 @@ def run_denoise(
     for vocal_path in vocal_files:
         log.info(f"  Denoising: {vocal_path.name}")
 
-        enhanced, sr = deepfilter_enhance(str(vocal_path), model=model, df_state=df_state)
+        enhanced, sr = deepfilter_enhance(
+            str(vocal_path), model=model, df_state=df_state
+        )
 
         # Sanitize any NaN values from DeepFilterNet
         if np.any(np.isnan(enhanced)):
-            log.warning("  NaN values detected in DeepFilterNet output — replacing with zeros (audio quality may be affected)")
+            log.warning(
+                "  NaN values detected in DeepFilterNet output — replacing with zeros (audio quality may be affected)"
+            )
             enhanced = np.nan_to_num(enhanced, nan=0.0)
 
         # Build output filename

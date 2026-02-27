@@ -1,4 +1,5 @@
 """Tests for the pipeline progress tracker."""
+
 from podcast_cleaner.tracker import PipelineTracker
 from podcast_cleaner.display import console
 

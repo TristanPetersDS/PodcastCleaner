@@ -74,7 +74,7 @@ Entry point: `podcast_cleaner/cli.py` — Click CLI with `run`, `analyze`, `stag
 | Flag | Description |
 |------|-------------|
 | `--url` | YouTube playlist or video URL |
-| `--input-dir` | Directory of local audio files |
+| `--input-dir` | Directory of local audio files (preserves existing `NN_` prefixes) |
 | `--input` | Single local audio file |
 | `--config` | Path to config.yaml (default: config.yaml) |
 | `--skip` | Skip a stage (repeatable) |

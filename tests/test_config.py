@@ -1,11 +1,15 @@
 """Tests for config loading and merging."""
 
 import logging
-from pathlib import Path
 
 import yaml
 
-from podcast_cleaner.config import DEFAULT_CONFIG, load_config, validate_config, _deep_merge
+from podcast_cleaner.config import (
+    DEFAULT_CONFIG,
+    load_config,
+    validate_config,
+    _deep_merge,
+)
 
 
 def test_load_config_returns_defaults_when_no_file(tmp_path):
@@ -19,7 +23,9 @@ def test_load_config_returns_defaults_when_no_file(tmp_path):
 def test_load_config_merges_with_defaults(tmp_path):
     """User config overrides only the keys it sets; defaults remain for the rest."""
     config_path = tmp_path / "config.yaml"
-    config_path.write_text(yaml.dump({"output_dir": "/custom/output", "separation": {"device": "cpu"}}))
+    config_path.write_text(
+        yaml.dump({"output_dir": "/custom/output", "separation": {"device": "cpu"}})
+    )
     config = load_config(config_path)
     assert config["output_dir"] == "/custom/output"
     assert config["separation"]["device"] == "cpu"
@@ -49,6 +55,7 @@ def test_config_fallback_to_example(tmp_path, monkeypatch):
     example = tmp_path / "config.example.yaml"
     example.write_text("output_dir: ./example_output\n")
     from podcast_cleaner.config import load_config
+
     config = load_config("config.yaml")
     assert config["output_dir"] == "./example_output"
 
@@ -66,7 +73,11 @@ class TestConfigValidation:
         """Valid config should produce no warnings."""
         with caplog.at_level(logging.WARNING):
             validate_config(dict(DEFAULT_CONFIG))
-        config_warnings = [m for m in caplog.messages if "config" in m.lower() or "unknown" in m.lower()]
+        config_warnings = [
+            m
+            for m in caplog.messages
+            if "config" in m.lower() or "unknown" in m.lower()
+        ]
         assert len(config_warnings) == 0
 
     def test_validates_target_lufs_negative(self, caplog):

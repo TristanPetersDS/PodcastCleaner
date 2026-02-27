@@ -32,7 +32,9 @@ class TestRunTranscribe:
         episode_dir = tmp_path / "ep"
         episode_dir.mkdir()
         (episode_dir / ".transcribe.done").touch()
-        config = {"transcription": {"enabled": True, "model": "large-v3", "device": "cpu"}}
+        config = {
+            "transcription": {"enabled": True, "model": "large-v3", "device": "cpu"}
+        }
         run_transcribe(str(episode_dir), config)
 
     @patch("podcast_cleaner.stages.transcribe.whisperx_transcribe")
@@ -46,12 +48,19 @@ class TestRunTranscribe:
 
         mock_wx.return_value = {
             "segments": [
-                {"start": 0.0, "end": 1.5, "text": "Hello world", "speaker": "SPEAKER_00"},
+                {
+                    "start": 0.0,
+                    "end": 1.5,
+                    "text": "Hello world",
+                    "speaker": "SPEAKER_00",
+                },
             ],
             "language": "en",
         }
 
-        config = {"transcription": {"enabled": True, "model": "large-v3", "device": "cpu"}}
+        config = {
+            "transcription": {"enabled": True, "model": "large-v3", "device": "cpu"}
+        }
         run_transcribe(str(episode_dir), config)
 
         transcript_dir = episode_dir / "final" / "transcript"
@@ -73,9 +82,12 @@ class TestMissingWhisperX:
         denoised_dir.mkdir(parents=True)
         sf.write(str(denoised_dir / "test_denoised.wav"), audio, sr, subtype="FLOAT")
 
-        config = {"transcription": {"enabled": True, "model": "large-v3", "device": "cpu"}}
+        config = {
+            "transcription": {"enabled": True, "model": "large-v3", "device": "cpu"}
+        }
 
         import logging
+
         with caplog.at_level(logging.WARNING):
             run_transcribe(str(episode_dir), config)
 

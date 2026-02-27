@@ -35,9 +35,7 @@ def _split_audio_segments(
     return segments
 
 
-def _crossfade_segments(
-    segments: list[np.ndarray], overlap_samples: int
-) -> np.ndarray:
+def _crossfade_segments(segments: list[np.ndarray], overlap_samples: int) -> np.ndarray:
     """Reassemble segments with Hann-windowed crossfade."""
     if len(segments) == 1:
         return segments[0]
@@ -72,7 +70,13 @@ def _crossfade_segments(
     return np.concatenate(result_parts)
 
 
-def demucs_separate(audio_path: str, model_name: str, device, model=None, max_segment_minutes: float = 10) -> dict:
+def demucs_separate(
+    audio_path: str,
+    model_name: str,
+    device,
+    model=None,
+    max_segment_minutes: float = 10,
+) -> dict:
     """Run Demucs separation on a single audio file.
 
     Returns dict with 'vocals', 'no_vocals' tensors and 'sample_rate'.
@@ -84,6 +88,7 @@ def demucs_separate(audio_path: str, model_name: str, device, model=None, max_se
 
     if model is None:
         from demucs.pretrained import get_model
+
         model = get_model(model_name)
         model.to(device)
 
@@ -100,18 +105,27 @@ def demucs_separate(audio_path: str, model_name: str, device, model=None, max_se
     wav = wav.clamp(-0.999, 0.999)
 
     try:
-        sources = apply_model(model, wav, device=device, split=True, overlap=0.25, shifts=1)
+        sources = apply_model(
+            model, wav, device=device, split=True, overlap=0.25, shifts=1
+        )
     except (torch.cuda.OutOfMemoryError, AssertionError) as e:
         if isinstance(e, AssertionError):
-            logger.warning("Demucs assertion error (audio may be too long for GPU memory) — retrying on CPU")
+            logger.warning(
+                "Demucs assertion error (audio may be too long for GPU memory) — retrying on CPU"
+            )
         else:
-            logger.warning("GPU memory exceeded for Demucs separation — falling back to CPU (this will be slower)")
+            logger.warning(
+                "GPU memory exceeded for Demucs separation — falling back to CPU (this will be slower)"
+            )
         import gc
+
         model.to("cpu")
         wav = wav.to("cpu")
         gc.collect()
         torch.cuda.empty_cache()
-        sources = apply_model(model, wav, device="cpu", split=True, overlap=0.25, shifts=0)
+        sources = apply_model(
+            model, wav, device="cpu", split=True, overlap=0.25, shifts=0
+        )
 
     # sources shape: (1, num_sources, channels, time)
     # Find vocals index from model.sources
@@ -137,6 +151,7 @@ def demucs_separate(audio_path: str, model_name: str, device, model=None, max_se
 def _load_demucs_model(model_name: str, device):
     """Load a Demucs model and move it to *device*."""
     from demucs.pretrained import get_model
+
     model = get_model(model_name)
     model.to(device)
     return model
@@ -181,7 +196,9 @@ def run_separate(
     for wav_path in wav_files:
         log.info(f"Separating: {wav_path.name}")
         max_seg = sep_config.get("max_segment_minutes", 10)
-        result = demucs_separate(str(wav_path), model_name, device, model=model, max_segment_minutes=max_seg)
+        result = demucs_separate(
+            str(wav_path), model_name, device, model=model, max_segment_minutes=max_seg
+        )
 
         stem = wav_path.stem
         sr = result["sample_rate"]
@@ -211,6 +228,7 @@ def run_separate(
 
     # Release GPU memory for subsequent stages
     import gc
+
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()

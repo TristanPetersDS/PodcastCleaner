@@ -36,7 +36,11 @@ def run_preprocess(
     if not raw_dir.exists():
         raise FileNotFoundError(f"No raw/ directory found in {episode_dir}")
 
-    audio_files = list(raw_dir.glob("*.wav")) + list(raw_dir.glob("*.mp3")) + list(raw_dir.glob("*.m4a"))
+    audio_files = (
+        list(raw_dir.glob("*.wav"))
+        + list(raw_dir.glob("*.mp3"))
+        + list(raw_dir.glob("*.m4a"))
+    )
     if not audio_files:
         raise FileNotFoundError(f"No audio files found in {raw_dir}")
 
@@ -48,7 +52,9 @@ def run_preprocess(
         out_path = out_dir / f"{audio_path.stem}.wav"
         write_audio(str(out_path), audio, target_sr)
         duration = len(audio) / target_sr
-        log.info(f"  Output: {out_path.name} ({duration:.1f}s, {target_sr}Hz, mono, float32)")
+        log.info(
+            f"  Output: {out_path.name} ({duration:.1f}s, {target_sr}Hz, mono, float32)"
+        )
         del audio  # Free memory before stats computation
 
         # Analyze

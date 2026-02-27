@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from podcast_cleaner.stages.download import (
     build_episode_dirname,

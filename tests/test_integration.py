@@ -1,6 +1,5 @@
 """Integration test: full pipeline on synthetic audio with mocked ML models."""
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -49,12 +48,20 @@ class TestFullPipeline:
     @patch("podcast_cleaner.stages.denoise._load_deepfilter_model")
     @patch("podcast_cleaner.stages.denoise.deepfilter_enhance")
     def test_pipeline_produces_final_output(
-        self, mock_denoise, mock_load_df, mock_demucs, mock_load_demucs, noisy_episode, mock_config
+        self,
+        mock_denoise,
+        mock_load_df,
+        mock_demucs,
+        mock_load_demucs,
+        noisy_episode,
+        mock_config,
     ):
         episode_dir, tmp_path = noisy_episode
 
         # Read the actual audio for mocks
-        audio, sr = sf.read(str(episode_dir / "raw" / "Test-Episode.wav"), dtype="float32")
+        audio, sr = sf.read(
+            str(episode_dir / "raw" / "Test-Episode.wav"), dtype="float32"
+        )
 
         # Mock model loading
         mock_load_demucs.return_value = MagicMock()

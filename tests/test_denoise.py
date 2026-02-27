@@ -69,7 +69,9 @@ class TestDeepFilterCPUFallback:
 
     @patch("podcast_cleaner.stages.denoise.deepfilter_enhance")
     @patch("podcast_cleaner.stages.denoise._load_deepfilter_model")
-    def test_deepfilter_nan_sanitization_cpu(self, mock_load_model, mock_enhance, tmp_path):
+    def test_deepfilter_nan_sanitization_cpu(
+        self, mock_load_model, mock_enhance, tmp_path
+    ):
         """Output NaN values should be sanitized."""
         sr = 48000
         audio_with_nan = np.sin(np.linspace(0, 1, sr)).astype(np.float32)

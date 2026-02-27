@@ -1,4 +1,5 @@
 """Pipeline progress tracker using Rich."""
+
 from __future__ import annotations
 
 import logging
@@ -27,9 +28,7 @@ class PipelineTracker:
         self._current_stage = ""
         episode_num = self._completed + self._failed + 1
         total = max(self.total_episodes, 1)
-        self.console.print(
-            f"[bold]Episode {episode_num}/{total}:[/bold] {name}"
-        )
+        self.console.print(f"[bold]Episode {episode_num}/{total}:[/bold] {name}")
 
     def start_stage(self, stage_name: str) -> None:
         """Begin tracking a stage within the current episode."""

@@ -27,7 +27,7 @@ def measure_true_peak(audio: np.ndarray) -> float:
 
 def measure_rms_db(audio: np.ndarray) -> float:
     """Measure RMS level in dBFS."""
-    rms = float(np.sqrt(np.mean(audio ** 2)))
+    rms = float(np.sqrt(np.mean(audio**2)))
     if rms < 1e-10:
         return -100.0
     return round(20 * np.log10(rms), 1)
@@ -46,10 +46,12 @@ def measure_snr(audio: np.ndarray, sr: int) -> float:
     if num_frames < 10:
         return 0.0
 
-    frame_rms = np.array([
-        np.sqrt(np.mean(audio[i * frame_size:(i + 1) * frame_size] ** 2))
-        for i in range(num_frames)
-    ])
+    frame_rms = np.array(
+        [
+            np.sqrt(np.mean(audio[i * frame_size : (i + 1) * frame_size] ** 2))
+            for i in range(num_frames)
+        ]
+    )
 
     # Filter out silent frames
     active = frame_rms[frame_rms > 1e-8]
@@ -66,8 +68,8 @@ def measure_snr(audio: np.ndarray, sr: int) -> float:
 
     # Noise floor: bottom 10% of active frames
     sorted_rms = np.sort(active)
-    noise_floor = np.mean(sorted_rms[:max(1, len(sorted_rms) // 10)])
-    signal_level = np.mean(sorted_rms[len(sorted_rms) // 2:])  # top 50%
+    noise_floor = np.mean(sorted_rms[: max(1, len(sorted_rms) // 10)])
+    signal_level = np.mean(sorted_rms[len(sorted_rms) // 2 :])  # top 50%
 
     if noise_floor < 1e-10:
         return 60.0  # Very clean
@@ -100,7 +102,9 @@ def measure_spectral_centroid(audio: np.ndarray, sr: int) -> float:
     return round(weighted_sum / energy_sum, 1)
 
 
-def compute_stats(audio_path: str, audio_data: tuple[np.ndarray, int] | None = None) -> dict:
+def compute_stats(
+    audio_path: str, audio_data: tuple[np.ndarray, int] | None = None
+) -> dict:
     """Compute all audio quality metrics for a file.
 
     Args:

@@ -1,4 +1,5 @@
 """Shared Rich console for CLI output."""
+
 from __future__ import annotations
 
 import sys

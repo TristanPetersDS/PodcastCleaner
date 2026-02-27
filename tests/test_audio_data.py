@@ -26,15 +26,15 @@ from podcast_cleaner.analysis.audio_stats import compute_stats
 # =============================================================================
 THRESHOLDS = {
     "post_separate": {
-        "snr_db_min": 15.0,         # Separation should improve SNR significantly
+        "snr_db_min": 15.0,  # Separation should improve SNR significantly
     },
     "post_denoise": {
-        "snr_db_min": 20.0,         # Denoising should push SNR higher
+        "snr_db_min": 20.0,  # Denoising should push SNR higher
     },
     "post_normalize": {
         "lufs_target": -16.0,
-        "lufs_tolerance": 1.0,       # Within 1 LUFS of target
-        "true_peak_max": -1.0,       # Should not exceed -1 dBTP
+        "lufs_tolerance": 1.0,  # Within 1 LUFS of target
+        "true_peak_max": -1.0,  # Should not exceed -1 dBTP
     },
     "general": {
         "duration_tolerance_pct": 1.0,  # Duration should not change more than 1%
@@ -83,9 +83,9 @@ class TestAudioQualityThresholds:
 
         stats = compute_stats(str(audio_path))
         threshold = THRESHOLDS["post_separate"]["snr_db_min"]
-        assert stats["snr_db"] >= threshold, (
-            f"Post-separation SNR {stats['snr_db']:.1f} dB below threshold {threshold} dB"
-        )
+        assert (
+            stats["snr_db"] >= threshold
+        ), f"Post-separation SNR {stats['snr_db']:.1f} dB below threshold {threshold} dB"
 
     @pytest.mark.slow
     def test_denoise_improves_snr(self):
@@ -100,9 +100,9 @@ class TestAudioQualityThresholds:
 
         stats = compute_stats(str(audio_path))
         threshold = THRESHOLDS["post_denoise"]["snr_db_min"]
-        assert stats["snr_db"] >= threshold, (
-            f"Post-denoise SNR {stats['snr_db']:.1f} dB below threshold {threshold} dB"
-        )
+        assert (
+            stats["snr_db"] >= threshold
+        ), f"Post-denoise SNR {stats['snr_db']:.1f} dB below threshold {threshold} dB"
 
     @pytest.mark.slow
     def test_normalization_hits_target(self):
@@ -124,9 +124,9 @@ class TestAudioQualityThresholds:
         )
 
         peak_max = THRESHOLDS["post_normalize"]["true_peak_max"]
-        assert stats["true_peak"] <= peak_max, (
-            f"True peak {stats['true_peak']:.1f} dBTP exceeds maximum {peak_max} dBTP"
-        )
+        assert (
+            stats["true_peak"] <= peak_max
+        ), f"True peak {stats['true_peak']:.1f} dBTP exceeds maximum {peak_max} dBTP"
 
     @pytest.mark.slow
     def test_duration_preserved(self):
@@ -184,14 +184,18 @@ class TestSyntheticAudioQuality:
 
         sr = 48000
         duration = 2.0
-        audio = (0.3 * np.sin(np.linspace(0, duration, int(sr * duration)))).astype(np.float32)
+        audio = (0.3 * np.sin(np.linspace(0, duration, int(sr * duration)))).astype(
+            np.float32
+        )
 
         episode_dir = tmp_path / "01_Test"
         norm_dir = episode_dir / "normalized"
         norm_dir.mkdir(parents=True)
         sf.write(str(norm_dir / "test_normalized.wav"), audio, sr, subtype="FLOAT")
 
-        config = {"export": {"formats": ["mp3"], "mp3_bitrate": "320k", "sample_rate": 48000}}
+        config = {
+            "export": {"formats": ["mp3"], "mp3_bitrate": "320k", "sample_rate": 48000}
+        }
         run_export(str(episode_dir), config)
 
         # Check MP3 duration
@@ -199,9 +203,18 @@ class TestSyntheticAudioQuality:
         assert mp3_files, f"No MP3 files found in {episode_dir / 'final'}"
         mp3 = mp3_files[0]
         result = subprocess.run(
-            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
-             "-of", "csv=p=0", str(mp3)],
-            capture_output=True, text=True,
+            [
+                "ffprobe",
+                "-v",
+                "quiet",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "csv=p=0",
+                str(mp3),
+            ],
+            capture_output=True,
+            text=True,
         )
         mp3_duration = float(result.stdout.strip())
         assert abs(mp3_duration - duration) < 0.1  # Within 100ms

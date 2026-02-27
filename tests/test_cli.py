@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 from click.testing import CliRunner
 
-from podcast_cleaner.cli import main
+from podcast_cleaner.cli import _parse_episode_number, main
 
 
 @pytest.fixture
@@ -21,11 +21,15 @@ class TestRunCommand:
 
     def test_url_flag_accepted(self, runner):
         """--url flag should be recognized (even if download would fail)."""
-        with patch("podcast_cleaner.cli.run_pipeline") as mock_run, \
-             patch("podcast_cleaner.stages.download.run_download", return_value=[]) as mock_dl, \
-             patch("podcast_cleaner.utils.setup_logging", return_value=MagicMock()):
+        with (
+            patch("podcast_cleaner.cli.run_pipeline") as mock_run,
+            patch("podcast_cleaner.stages.download.run_download", return_value=[]),
+            patch("podcast_cleaner.utils.setup_logging", return_value=MagicMock()),
+        ):
             mock_run.return_value = []
-            result = runner.invoke(main, ["run", "--url", "https://youtube.com/watch?v=test"])
+            result = runner.invoke(
+                main, ["run", "--url", "https://youtube.com/watch?v=test"]
+            )
             assert result.exit_code == 0
 
     def test_input_dir_flag_accepted(self, runner, tmp_path):
@@ -48,7 +52,9 @@ class TestCleanupIntermediates:
     def test_cleanup_resume_conflict(self):
         """--cleanup-intermediates and --resume should conflict."""
         runner = CliRunner()
-        result = runner.invoke(main, ["run", "--input", __file__, "--cleanup-intermediates", "--resume"])
+        result = runner.invoke(
+            main, ["run", "--input", __file__, "--cleanup-intermediates", "--resume"]
+        )
         assert result.exit_code != 0
         assert "Cannot use --cleanup-intermediates with --resume" in result.output
 
@@ -87,7 +93,9 @@ class TestVerboseQuietFlags:
 
     def test_verbose_quiet_conflict(self, runner):
         """--verbose and --quiet should conflict."""
-        result = runner.invoke(main, ["run", "--input", __file__, "--verbose", "--quiet"])
+        result = runner.invoke(
+            main, ["run", "--input", __file__, "--verbose", "--quiet"]
+        )
         assert result.exit_code != 0
 
 
@@ -111,14 +119,18 @@ class TestCopyInput:
         with patch("podcast_cleaner.cli.run_pipeline") as mock_run:
             # Return the episode_dirs arg so successes == episode_dirs
             mock_run.side_effect = lambda config, episode_dirs, **kw: episode_dirs
-            result = runner.invoke(main, [
-                "run", "--input", str(input_dir / "test.wav"),
-                "--copy-input", "--config", "config.example.yaml",
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--input",
+                    str(input_dir / "test.wav"),
+                    "--copy-input",
+                    "--config",
+                    "config.example.yaml",
+                ],
+            )
 
-        # Find the created raw dir
-        import glob
-        raw_files = glob.glob(str(tmp_path / "**" / "raw" / "*.wav"), recursive=True)
         # The file in raw/ should NOT be a symlink when --copy-input is used
         # (test may not find files if output_dir is elsewhere, but flag should be accepted)
         assert result.exit_code == 0 or "--copy-input" in result.output
@@ -139,26 +151,35 @@ class TestCopyInput:
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        with patch("podcast_cleaner.cli.run_pipeline") as mock_run, \
-             patch("podcast_cleaner.cli.load_config") as mock_config:
+        with (
+            patch("podcast_cleaner.cli.run_pipeline") as mock_run,
+            patch("podcast_cleaner.cli.load_config") as mock_config,
+        ):
             # Return the episode_dirs arg so successes == episode_dirs
             mock_run.side_effect = lambda config, episode_dirs, **kw: episode_dirs
             mock_config.return_value = {
                 **DEFAULT_CONFIG,
                 "output_dir": str(output_dir),
             }
-            result = runner.invoke(main, [
-                "run", "--input-dir", str(input_dir),
-                "--copy-input",
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--input-dir",
+                    str(input_dir),
+                    "--copy-input",
+                ],
+            )
 
         assert result.exit_code == 0
 
         # Find raw dirs in output
         import glob
+
         raw_files = glob.glob(str(output_dir / "**" / "raw" / "*.wav"), recursive=True)
         assert len(raw_files) == 1, f"Expected 1 raw file, found {raw_files}"
         from pathlib import Path
+
         raw_file = Path(raw_files[0])
         assert not raw_file.is_symlink(), "File should be a copy, not a symlink"
 
@@ -178,38 +199,115 @@ class TestCopyInput:
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        with patch("podcast_cleaner.cli.run_pipeline") as mock_run, \
-             patch("podcast_cleaner.cli.load_config") as mock_config:
+        with (
+            patch("podcast_cleaner.cli.run_pipeline") as mock_run,
+            patch("podcast_cleaner.cli.load_config") as mock_config,
+        ):
             # Return the episode_dirs arg so successes == episode_dirs
             mock_run.side_effect = lambda config, episode_dirs, **kw: episode_dirs
             mock_config.return_value = {
                 **DEFAULT_CONFIG,
                 "output_dir": str(output_dir),
             }
-            result = runner.invoke(main, [
-                "run", "--input-dir", str(input_dir),
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--input-dir",
+                    str(input_dir),
+                ],
+            )
 
         assert result.exit_code == 0
 
         # Find raw dirs in output
         import glob
+
         raw_files = glob.glob(str(output_dir / "**" / "raw" / "*.wav"), recursive=True)
         assert len(raw_files) == 1, f"Expected 1 raw file, found {raw_files}"
         from pathlib import Path
+
         raw_file = Path(raw_files[0])
         assert raw_file.is_symlink(), "File should be a symlink by default"
+
+
+class TestParseEpisodeNumber:
+    def test_two_digit_prefix(self):
+        """Should extract 2-digit prefix and title."""
+        result = _parse_episode_number("03_My-Episode")
+        assert result == (3, "My-Episode")
+
+    def test_three_digit_prefix(self):
+        """Should extract 3-digit prefix and title."""
+        result = _parse_episode_number("123_Some-Title")
+        assert result == (123, "Some-Title")
+
+    def test_no_prefix(self):
+        """Should return None for stems without a prefix."""
+        assert _parse_episode_number("My-Episode") is None
+
+    def test_single_digit_not_matched(self):
+        """Single-digit prefix should not match (requires 2+ digits)."""
+        assert _parse_episode_number("3_My-Episode") is None
+
+
+class TestInputDirPreservesNumbering:
+    def test_preserves_existing_numbers(self, runner, tmp_path):
+        """--input-dir should preserve existing NN_ prefixes in filenames."""
+        import numpy as np
+        import soundfile as sf
+
+        from podcast_cleaner.config import DEFAULT_CONFIG
+
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        audio = np.zeros(1000, dtype=np.float32)
+
+        # Create files with existing numbering (gap at 02)
+        sf.write(str(input_dir / "01_First-Episode.wav"), audio, 16000)
+        sf.write(str(input_dir / "03_Third-Episode.wav"), audio, 16000)
+        sf.write(str(input_dir / "05_Fifth-Episode.wav"), audio, 16000)
+
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        with (
+            patch("podcast_cleaner.cli.run_pipeline") as mock_run,
+            patch("podcast_cleaner.cli.load_config") as mock_config,
+        ):
+            mock_run.side_effect = lambda config, episode_dirs, **kw: episode_dirs
+            mock_config.return_value = {
+                **DEFAULT_CONFIG,
+                "output_dir": str(output_dir),
+            }
+            result = runner.invoke(main, ["run", "--input-dir", str(input_dir)])
+
+        assert result.exit_code == 0
+
+        # Check that output dirs preserve the original numbering
+        dirs = sorted(d.name for d in output_dir.iterdir() if d.is_dir())
+        assert len(dirs) == 3
+        assert dirs[0].startswith("01_")
+        assert dirs[1].startswith("03_")
+        assert dirs[2].startswith("05_")
 
 
 class TestRichConsole:
     def test_rich_console_fallback_no_tty(self):
         """Rich should use plain text when not a TTY."""
-        import subprocess, sys
+        import subprocess
+        import sys
+
         result = subprocess.run(
-            [sys.executable, "-c",
-             "from podcast_cleaner.display import console; "
-             "assert not console.is_terminal"],
-            capture_output=True, text=True, timeout=30,
+            [
+                sys.executable,
+                "-c",
+                "from podcast_cleaner.display import console; "
+                "assert not console.is_terminal",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         # When piped (capture_output), console should not be a terminal
         assert result.returncode == 0, f"Failed: {result.stderr}"

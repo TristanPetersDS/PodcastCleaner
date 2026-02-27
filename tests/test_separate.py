@@ -26,6 +26,7 @@ class TestRunSeparate:
 
         # Mock demucs to produce fake stems
         import torch
+
         mock_demucs.return_value = {
             "vocals": torch.from_numpy(audio).unsqueeze(0),
             "no_vocals": torch.from_numpy(audio * 0.1).unsqueeze(0),
@@ -59,7 +60,10 @@ class TestPreSegmentation:
         samples (as they would from splitting the same source audio), so the
         crossfade should reconstruct the original signal nearly perfectly.
         """
-        from podcast_cleaner.stages.separate import _crossfade_segments, _split_audio_segments
+        from podcast_cleaner.stages.separate import (
+            _crossfade_segments,
+            _split_audio_segments,
+        )
 
         sr = 44100
         overlap_samples = int(30.0 * sr)  # 30s overlap
@@ -81,8 +85,14 @@ class TestPreSegmentation:
         crossfade_mid = crossfade_start + overlap_samples // 2
         window = sr  # 1 second
 
-        rms_before = np.sqrt(np.mean(result[crossfade_start - window : crossfade_start] ** 2))
-        rms_mid = np.sqrt(np.mean(result[crossfade_mid - window // 2 : crossfade_mid + window // 2] ** 2))
+        rms_before = np.sqrt(
+            np.mean(result[crossfade_start - window : crossfade_start] ** 2)
+        )
+        rms_mid = np.sqrt(
+            np.mean(
+                result[crossfade_mid - window // 2 : crossfade_mid + window // 2] ** 2
+            )
+        )
 
         if rms_before > 1e-10 and rms_mid > 1e-10:
             energy_diff_db = abs(20 * np.log10(rms_mid / rms_before))
@@ -97,7 +107,9 @@ class TestPreSegmentation:
         max_segment_samples = int(10 * 60 * sr)  # 10 min
         overlap_samples = int(30 * sr)
 
-        segments = _split_audio_segments(short_audio, max_segment_samples, overlap_samples)
+        segments = _split_audio_segments(
+            short_audio, max_segment_samples, overlap_samples
+        )
         assert len(segments) == 1
         np.testing.assert_array_equal(segments[0], short_audio)
 
@@ -110,5 +122,7 @@ class TestPreSegmentation:
         overlap_samples = int(30 * sr)
         exact_audio = np.ones(max_segment_samples, dtype=np.float32) * 0.5
 
-        segments = _split_audio_segments(exact_audio, max_segment_samples, overlap_samples)
+        segments = _split_audio_segments(
+            exact_audio, max_segment_samples, overlap_samples
+        )
         assert len(segments) == 1

@@ -33,7 +33,9 @@ def segments_to_srt(segments: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def whisperx_transcribe(audio_path: str, model_size: str, device: str, model=None) -> dict:
+def whisperx_transcribe(
+    audio_path: str, model_size: str, device: str, model=None
+) -> dict:
     """Run WhisperX transcription + alignment on an audio file.
 
     If *model* is provided it is reused instead of loading a fresh copy.
@@ -66,7 +68,9 @@ def whisperx_transcribe(audio_path: str, model_size: str, device: str, model=Non
         torch.cuda.empty_cache()
 
     # Align word-level timestamps
-    model_a, metadata = whisperx.load_align_model(language_code=detected_lang, device=device)
+    model_a, metadata = whisperx.load_align_model(
+        language_code=detected_lang, device=device
+    )
     result = whisperx.align(
         result["segments"],
         model_a,
@@ -108,12 +112,16 @@ def run_transcribe(
 
     # Find audio to transcribe (denoised preferred)
     denoised_dir = episode_path / "denoised"
-    audio_files = list(denoised_dir.glob("*_denoised.wav")) if denoised_dir.exists() else []
+    audio_files = (
+        list(denoised_dir.glob("*_denoised.wav")) if denoised_dir.exists() else []
+    )
     if not audio_files:
         sep_dir = episode_path / "separated"
         audio_files = list(sep_dir.glob("*_vocals.wav")) if sep_dir.exists() else []
     if not audio_files:
-        raise FileNotFoundError(f"No audio files found for transcription in {episode_dir}")
+        raise FileNotFoundError(
+            f"No audio files found for transcription in {episode_dir}"
+        )
 
     device = str(get_device(tx_config.get("device", "auto")))
     model_size = tx_config.get("model", "large-v3")
@@ -140,12 +148,14 @@ def run_transcribe(
         # Build transcript data
         transcript_segments = []
         for seg in segments:
-            transcript_segments.append({
-                "start": round(seg.get("start", 0), 3),
-                "end": round(seg.get("end", 0), 3),
-                "speaker": seg.get("speaker", ""),
-                "text": seg.get("text", "").strip(),
-            })
+            transcript_segments.append(
+                {
+                    "start": round(seg.get("start", 0), 3),
+                    "end": round(seg.get("end", 0), 3),
+                    "speaker": seg.get("speaker", ""),
+                    "text": seg.get("text", "").strip(),
+                }
+            )
 
         transcript = {
             "episode": episode_name,

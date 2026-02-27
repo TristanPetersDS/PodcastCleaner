@@ -1,7 +1,6 @@
 """Tests for audio analysis metrics."""
 
 import json
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -9,7 +8,6 @@ import soundfile as sf
 
 from podcast_cleaner.analysis.audio_stats import (
     compute_stats,
-    measure_lufs,
     measure_rms_db,
     measure_snr,
     measure_spectral_centroid,
@@ -119,6 +117,6 @@ class TestComputeStatsInMemory:
         mem_stats = compute_stats(str(path), audio_data=(audio, sr))
 
         for key in disk_stats:
-            assert disk_stats[key] == mem_stats[key], (
-                f"Mismatch for {key}: disk={disk_stats[key]}, mem={mem_stats[key]}"
-            )
+            assert (
+                disk_stats[key] == mem_stats[key]
+            ), f"Mismatch for {key}: disk={disk_stats[key]}, mem={mem_stats[key]}"

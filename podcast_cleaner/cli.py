@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -12,6 +13,20 @@ from podcast_cleaner.display import console
 from podcast_cleaner.stages import STAGE_ORDER
 from podcast_cleaner.tracker import PipelineTracker
 from podcast_cleaner.utils import AUDIO_EXTENSIONS
+
+_EPISODE_NUMBER_RE = re.compile(r"^(\d{2,3})_(.+)$")
+
+
+def _parse_episode_number(stem: str) -> tuple[int, str] | None:
+    """Extract episode number and title from a filename stem like '03_My-Episode'.
+
+    Returns (number, title) if the stem starts with a 2-3 digit prefix,
+    or None if no prefix is found.
+    """
+    m = _EPISODE_NUMBER_RE.match(stem)
+    if m:
+        return int(m.group(1)), m.group(2)
+    return None
 
 
 def _link_or_copy(source: Path, dest: Path, force_copy: bool = False) -> None:
@@ -84,13 +99,19 @@ def run_pipeline(
         if quiet:
             # Suppress console handler -- only log to file
             for handler in stage_logger.handlers:
-                if hasattr(handler, 'stream') and handler.stream in (sys.stdout, sys.stderr):
+                if hasattr(handler, "stream") and handler.stream in (
+                    sys.stdout,
+                    sys.stderr,
+                ):
                     handler.setLevel(logging.ERROR)
         elif verbose:
             # Show all log messages on console
             stage_logger.setLevel(logging.DEBUG)
             for handler in stage_logger.handlers:
-                if hasattr(handler, 'stream') and handler.stream in (sys.stdout, sys.stderr):
+                if hasattr(handler, "stream") and handler.stream in (
+                    sys.stdout,
+                    sys.stderr,
+                ):
                     handler.setLevel(logging.DEBUG)
 
         stage_logger.info(f"=== Processing: {ep_name} ===")
@@ -139,16 +160,48 @@ def main():
 
 @main.command()
 @click.option("--url", default=None, help="YouTube playlist or video URL")
-@click.option("--input-dir", default=None, type=click.Path(exists=True), help="Directory of local audio files")
-@click.option("--input", "input_file", default=None, type=click.Path(exists=True), help="Single local audio file")
-@click.option("--config", "config_path", default="config.yaml", help="Path to config.yaml")
+@click.option(
+    "--input-dir",
+    default=None,
+    type=click.Path(exists=True),
+    help="Directory of local audio files",
+)
+@click.option(
+    "--input",
+    "input_file",
+    default=None,
+    type=click.Path(exists=True),
+    help="Single local audio file",
+)
+@click.option(
+    "--config", "config_path", default="config.yaml", help="Path to config.yaml"
+)
 @click.option("--skip", multiple=True, help="Skip a stage (can repeat)")
 @click.option("--resume", is_flag=True, help="Resume from last completed stage")
-@click.option("--cleanup-intermediates", is_flag=True, help="Delete intermediate stage dirs after success")
-@click.option("--copy-input", is_flag=True, help="Copy input files instead of symlinking (for Docker/cross-filesystem)")
+@click.option(
+    "--cleanup-intermediates",
+    is_flag=True,
+    help="Delete intermediate stage dirs after success",
+)
+@click.option(
+    "--copy-input",
+    is_flag=True,
+    help="Copy input files instead of symlinking (for Docker/cross-filesystem)",
+)
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed logging output")
 @click.option("--quiet", "-q", is_flag=True, help="Only show progress and errors")
-def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermediates, copy_input, verbose, quiet):
+def run(
+    url,
+    input_dir,
+    input_file,
+    config_path,
+    skip,
+    resume,
+    cleanup_intermediates,
+    copy_input,
+    verbose,
+    quiet,
+):
     """Run the full audio cleaning pipeline."""
     if verbose and quiet:
         raise click.UsageError("Cannot use --verbose with --quiet")
@@ -173,14 +226,24 @@ def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermedi
         from podcast_cleaner.utils import ensure_dir
 
         input_path = Path(input_dir).resolve()
-        for i, f in enumerate(sorted(input_path.iterdir())):
-            if f.suffix.lower() in AUDIO_EXTENSIONS:
-                dirname = build_episode_dirname(f.stem, i)
-                ep_dir = ensure_dir(Path(output_base) / dirname)
-                raw_dir = ensure_dir(ep_dir / "raw")
-                dest = raw_dir / f.name
-                _link_or_copy(f, dest, force_copy=copy_input)
-                episode_dirs.append(str(ep_dir))
+        audio_files = sorted(
+            f for f in input_path.iterdir() if f.suffix.lower() in AUDIO_EXTENSIONS
+        )
+        # Sequential counter for files without an existing NN_ prefix
+        next_seq = 0
+        for f in audio_files:
+            parsed = _parse_episode_number(f.stem)
+            if parsed is not None:
+                ep_num, title = parsed
+                dirname = build_episode_dirname(title, ep_num - 1)
+            else:
+                dirname = build_episode_dirname(f.stem, next_seq)
+                next_seq += 1
+            ep_dir = ensure_dir(Path(output_base) / dirname)
+            raw_dir = ensure_dir(ep_dir / "raw")
+            dest = raw_dir / f.name
+            _link_or_copy(f, dest, force_copy=copy_input)
+            episode_dirs.append(str(ep_dir))
 
     elif input_file:
         from podcast_cleaner.stages.download import build_episode_dirname
@@ -202,7 +265,14 @@ def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermedi
         return
 
     console.print(f"Processing {len(episode_dirs)} episode(s)...")
-    successes = run_pipeline(config, episode_dirs, skip_stages=skip, resume=resume, verbose=verbose, quiet=quiet)
+    successes = run_pipeline(
+        config,
+        episode_dirs,
+        skip_stages=skip,
+        resume=resume,
+        verbose=verbose,
+        quiet=quiet,
+    )
 
     if cleanup_intermediates:
         import shutil
@@ -220,7 +290,9 @@ def run(url, input_dir, input_file, config_path, skip, resume, cleanup_intermedi
 
 @main.command()
 @click.argument("episode_dir", type=click.Path(exists=True))
-@click.option("--config", "config_path", default="config.yaml", help="Path to config.yaml")
+@click.option(
+    "--config", "config_path", default="config.yaml", help="Path to config.yaml"
+)
 def analyze(episode_dir, config_path):
     """Analyze audio quality for an episode directory."""
     from podcast_cleaner.analysis.audio_stats import compute_stats, save_stage_report
@@ -264,7 +336,9 @@ def analyze(episode_dir, config_path):
 @main.command()
 @click.argument("stage_name")
 @click.argument("episode_dir", type=click.Path(exists=True))
-@click.option("--config", "config_path", default="config.yaml", help="Path to config.yaml")
+@click.option(
+    "--config", "config_path", default="config.yaml", help="Path to config.yaml"
+)
 def stage(stage_name, episode_dir, config_path):
     """Run a single pipeline stage on an episode directory."""
     from podcast_cleaner.stages.denoise import run_denoise
@@ -286,7 +360,9 @@ def stage(stage_name, episode_dir, config_path):
     }
 
     if stage_name not in runners:
-        raise click.UsageError(f"Unknown stage: {stage_name}. Available: {', '.join(runners)}")
+        raise click.UsageError(
+            f"Unknown stage: {stage_name}. Available: {', '.join(runners)}"
+        )
 
     # Clear done marker so it re-runs
     clear_done(episode_dir, stage_name)
@@ -321,6 +397,7 @@ def check():
     # Check GPU/CUDA
     try:
         import torch
+
         cuda_available = torch.cuda.is_available()
         if cuda_available:
             gpu_name = torch.cuda.get_device_name(0)

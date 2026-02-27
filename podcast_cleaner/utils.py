@@ -42,7 +42,10 @@ def setup_logging(log_path: str | Path, stage_name: str) -> logging.Logger:
     logger.addHandler(fh)
 
     # Add console handler only once
-    if not any(isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler) for h in logger.handlers):
+    if not any(
+        isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+        for h in logger.handlers
+    ):
         sh = logging.StreamHandler(sys.stdout)
         sh.setFormatter(fmt)
         logger.addHandler(sh)
@@ -50,7 +53,9 @@ def setup_logging(log_path: str | Path, stage_name: str) -> logging.Logger:
     return logger
 
 
-def read_audio(path: str | Path, target_sr: int | None = None) -> tuple[np.ndarray, int]:
+def read_audio(
+    path: str | Path, target_sr: int | None = None
+) -> tuple[np.ndarray, int]:
     """Read audio file, optionally resample. Returns (samples, sample_rate)."""
     audio, sr = sf.read(str(path), dtype="float32")
     if audio.ndim > 1:
@@ -58,6 +63,7 @@ def read_audio(path: str | Path, target_sr: int | None = None) -> tuple[np.ndarr
     if target_sr and sr != target_sr:
         import torch
         import torchaudio
+
         waveform = torch.from_numpy(audio).unsqueeze(0)
         resampled = torchaudio.functional.resample(waveform, sr, target_sr)
         return resampled.squeeze(0).numpy(), target_sr

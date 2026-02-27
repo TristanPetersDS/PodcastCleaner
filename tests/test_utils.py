@@ -1,7 +1,5 @@
 """Tests for shared utilities."""
 
-from pathlib import Path
-
 import numpy as np
 
 from podcast_cleaner.utils import (
@@ -67,6 +65,7 @@ class TestAudioIO:
 
     def test_read_stereo_to_mono(self, tmp_path):
         import soundfile as sf
+
         sr = 16000
         stereo = np.random.randn(sr, 2).astype(np.float32) * 0.1
         path = tmp_path / "stereo.wav"
@@ -94,9 +93,14 @@ class TestLazyImports:
         import sys
 
         result = subprocess.run(
-            [sys.executable, "-c",
-             "import podcast_cleaner.cli; import sys; "
-             "assert 'torch' not in sys.modules, 'torch was eagerly imported'"],
-            capture_output=True, text=True, timeout=30,
+            [
+                sys.executable,
+                "-c",
+                "import podcast_cleaner.cli; import sys; "
+                "assert 'torch' not in sys.modules, 'torch was eagerly imported'",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         assert result.returncode == 0, f"torch eagerly imported: {result.stderr}"

@@ -1,7 +1,5 @@
 """Tests for the export stage."""
 
-from pathlib import Path
-
 import numpy as np
 import soundfile as sf
 
@@ -40,6 +38,8 @@ class TestRunExport:
         episode_dir.mkdir(parents=True)
         (episode_dir / ".export.done").touch()
 
-        config = {"export": {"formats": ["mp3"], "mp3_bitrate": "320k", "sample_rate": 48000}}
+        config = {
+            "export": {"formats": ["mp3"], "mp3_bitrate": "320k", "sample_rate": 48000}
+        }
         run_export(str(episode_dir), config)
         assert not (episode_dir / "final").exists()

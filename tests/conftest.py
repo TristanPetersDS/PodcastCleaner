@@ -31,6 +31,7 @@ def tmp_episode_dir(tmp_path: Path, tmp_audio: Path) -> Path:
     raw_dir.mkdir(parents=True)
     # Copy test audio to raw/
     import shutil
+
     shutil.copy(str(tmp_audio), str(raw_dir / "Test-Episode.wav"))
     return episode_dir
 
@@ -44,7 +45,12 @@ def sample_config(tmp_path: Path) -> dict:
         "preprocess": {"sample_rate": 48000, "channels": 1},
         "separation": {"model": "htdemucs_ft", "device": "cpu"},
         "denoise": {"model": "DeepFilterNet3"},
-        "transcription": {"enabled": False, "model": "large-v3", "language": None, "device": "cpu"},
+        "transcription": {
+            "enabled": False,
+            "model": "large-v3",
+            "language": None,
+            "device": "cpu",
+        },
         "normalization": {"target_lufs": -16.0, "true_peak_dbtp": -1.5},
         "export": {"formats": ["mp3"], "mp3_bitrate": "320k", "sample_rate": 48000},
     }
