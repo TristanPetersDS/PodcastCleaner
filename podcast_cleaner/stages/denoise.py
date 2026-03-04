@@ -16,6 +16,16 @@ logger = logging.getLogger(__name__)
 _fallen_back_to_cpu = False
 
 
+def reset_denoise_state() -> None:
+    """Reset module-level state between episodes.
+
+    Allows GPU to be retried for each new episode rather than staying
+    on CPU for the entire process after one fallback.
+    """
+    global _fallen_back_to_cpu
+    _fallen_back_to_cpu = False
+
+
 def deepfilter_enhance(
     audio_path: str, model=None, df_state=None
 ) -> tuple[np.ndarray, int]:
@@ -170,6 +180,7 @@ def run_denoise(
 ) -> None:
     """Denoise all vocal stems in the separated/ directory."""
     log = stage_logger or logger
+    reset_denoise_state()
     episode_path = Path(episode_dir)
 
     if is_done(episode_path, "denoise"):

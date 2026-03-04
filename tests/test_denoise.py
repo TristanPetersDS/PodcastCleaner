@@ -43,6 +43,35 @@ class TestRunDenoise:
         assert not (episode_dir / "denoised").exists()
 
 
+class TestDenoiseStateReset:
+    def test_cpu_fallback_resets_between_episodes(self, tmp_path):
+        """_fallen_back_to_cpu should reset at start of each run_denoise call."""
+        import podcast_cleaner.stages.denoise as denoise_mod
+
+        # Simulate a previous fallback
+        denoise_mod._fallen_back_to_cpu = True
+
+        # run_denoise should reset the flag at the start
+        episode_dir = tmp_path / "ep"
+        episode_dir.mkdir(parents=True)
+        sep_dir = episode_dir / "separated"
+        sep_dir.mkdir()
+        sr = 48000
+        audio = np.sin(np.linspace(0, 1, sr)).astype(np.float32)
+        sf.write(str(sep_dir / "test_vocals.wav"), audio, sr, subtype="FLOAT")
+
+        with (
+            patch("podcast_cleaner.stages.denoise._load_deepfilter_model") as mock_load,
+            patch("podcast_cleaner.stages.denoise.deepfilter_enhance") as mock_enhance,
+        ):
+            mock_load.return_value = (MagicMock(), MagicMock())
+            mock_enhance.return_value = (audio, sr)
+            config = {"denoise": {"model": "DeepFilterNet3"}}
+            run_denoise(str(episode_dir), config)
+
+        assert denoise_mod._fallen_back_to_cpu is False
+
+
 class TestDeepFilterCPUFallback:
     @patch("podcast_cleaner.stages.denoise.deepfilter_enhance")
     @patch("podcast_cleaner.stages.denoise._load_deepfilter_model")
