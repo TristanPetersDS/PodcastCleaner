@@ -21,24 +21,24 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "click>=8.1",
-    "yt-dlp>=2024.0",
-    "demucs>=4.0",
-    "deepfilternet>=0.5",
-    "pyloudnorm>=0.1",
-    "soundfile>=0.12",
+    "click>=8.1,<9",
+    "yt-dlp>=2024.0,<2027",
+    "demucs>=4.0,<5",
+    "deepfilternet>=0.5,<1",
+    "pyloudnorm>=0.1,<1",
+    "soundfile>=0.12,<1",
     "torch>=2.0,<2.9",
     "torchaudio>=2.0,<2.9",
-    "numpy>=1.24",
-    "pyyaml>=6.0",
-    "tqdm>=4.65",
-    "scipy>=1.10",
-    "rich>=13.0",
+    "numpy>=1.24,<3",
+    "pyyaml>=6.0,<7",
+    "tqdm>=4.65,<5",
+    "scipy>=1.10,<2",
+    "rich>=13.0,<14",
 ]
 
 [project.optional-dependencies]
-transcribe = ["whisperx>=3.1"]
-dev = ["pytest>=7.0", "pytest-cov", "pytest-mock"]
+transcribe = ["whisperx>=3.1,<4"]
+dev = ["pytest>=7.0,<9", "pytest-cov", "pytest-mock"]
 all = ["podcast-cleaner[transcribe,dev]"]
 
 [project.urls]
