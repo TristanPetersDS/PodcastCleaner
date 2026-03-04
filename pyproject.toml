@@ -7,6 +7,19 @@ name = "podcast-cleaner"
 version = "0.1.0"
 description = "CLI tool for downloading and cleaning podcast audio"
 requires-python = ">=3.10"
+authors = [
+    {name = "Tristan Peters"},
+]
+readme = "README.md"
+keywords = ["podcast", "audio", "demucs", "deepfilternet", "noise-reduction"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 dependencies = [
     "click>=8.1",
     "yt-dlp>=2024.0",
@@ -27,6 +40,9 @@ dependencies = [
 transcribe = ["whisperx>=3.1"]
 dev = ["pytest>=7.0", "pytest-cov", "pytest-mock"]
 all = ["podcast-cleaner[transcribe,dev]"]
+
+[project.urls]
+Repository = "https://github.com/TristanPetersDS/PodcastCleaner"
 
 [tool.setuptools.packages.find]
 include = ["podcast_cleaner*"]
