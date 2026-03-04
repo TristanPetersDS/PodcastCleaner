@@ -209,13 +209,6 @@ def run_denoise(
             str(vocal_path), model=model, df_state=df_state
         )
 
-        # Sanitize any NaN values from DeepFilterNet
-        if np.any(np.isnan(enhanced)):
-            log.warning(
-                "  NaN values detected in DeepFilterNet output — replacing with zeros (audio quality may be affected)"
-            )
-            enhanced = np.nan_to_num(enhanced, nan=0.0)
-
         # Build output filename
         stem = vocal_path.stem.replace("_vocals", "")
         out_path = out_dir / f"{stem}_denoised.wav"

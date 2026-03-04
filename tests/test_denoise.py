@@ -101,17 +101,16 @@ class TestDeepFilterCPUFallback:
     def test_deepfilter_nan_sanitization_cpu(
         self, mock_load_model, mock_enhance, tmp_path
     ):
-        """Output NaN values should be sanitized."""
+        """deepfilter_enhance sanitizes NaN internally; run_denoise gets clean output."""
         sr = 48000
-        audio_with_nan = np.sin(np.linspace(0, 1, sr)).astype(np.float32)
-        audio_with_nan[100:200] = np.nan
+        # deepfilter_enhance returns clean audio (NaN already sanitized internally)
+        clean_audio = np.sin(np.linspace(0, 1, sr)).astype(np.float32)
         mock_load_model.return_value = (MagicMock(), MagicMock())
-        mock_enhance.return_value = (audio_with_nan, sr)
+        mock_enhance.return_value = (clean_audio, sr)
 
         episode_dir = tmp_path / "ep"
         sep_dir = episode_dir / "separated"
         sep_dir.mkdir(parents=True)
-        clean_audio = np.sin(np.linspace(0, 1, sr)).astype(np.float32)
         sf.write(str(sep_dir / "test_vocals.wav"), clean_audio, sr, subtype="FLOAT")
 
         config = {"denoise": {"model": "DeepFilterNet3"}}
@@ -119,4 +118,4 @@ class TestDeepFilterCPUFallback:
 
         out = episode_dir / "denoised" / "test_denoised.wav"
         out_audio, _ = sf.read(str(out))
-        assert not np.any(np.isnan(out_audio)), "NaN values not sanitized"
+        assert not np.any(np.isnan(out_audio)), "NaN values in output"
