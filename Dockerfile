@@ -38,13 +38,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg libsndfile1 libopenblas0 \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user
+RUN groupadd --gid 1000 app && \
+    useradd --uid 1000 --gid app --create-home app
+
 # Copy venv and app from builder
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /app /app
 
-# Copy model caches
-COPY --from=builder /root/.cache/torch /root/.cache/torch
-COPY --from=builder /root/.cache/DeepFilterNet /root/.cache/DeepFilterNet
+# Copy model caches to non-root user's home
+COPY --from=builder /root/.cache/torch /home/app/.cache/torch
+COPY --from=builder /root/.cache/DeepFilterNet /home/app/.cache/DeepFilterNet
+RUN chown -R app:app /home/app/.cache
 
 ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
@@ -54,6 +59,11 @@ WORKDIR /app
 
 # Default config — user can mount their own
 COPY config.example.yaml config.yaml
+
+# Ensure output dir is writable by app user
+RUN mkdir -p /app/output && chown -R app:app /app
+
+USER app
 
 ENTRYPOINT ["podcast-cleaner"]
 CMD ["--help"]
