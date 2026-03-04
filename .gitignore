@@ -34,5 +34,10 @@ build/
 .DS_Store
 Thumbs.db
 
+# Sensitive files
+cookies*.txt
+*cookies*
+*.cookies
+
 # cuDNN workaround
 .cudnn8/
