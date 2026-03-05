@@ -83,9 +83,9 @@ class TestAudioQualityThresholds:
 
         stats = compute_stats(str(audio_path))
         threshold = THRESHOLDS["post_separate"]["snr_db_min"]
-        assert (
-            stats["snr_db"] >= threshold
-        ), f"Post-separation SNR {stats['snr_db']:.1f} dB below threshold {threshold} dB"
+        assert stats["snr_db"] >= threshold, (
+            f"Post-separation SNR {stats['snr_db']:.1f} dB below threshold {threshold} dB"
+        )
 
     @pytest.mark.slow
     def test_denoise_improves_snr(self):
@@ -100,9 +100,9 @@ class TestAudioQualityThresholds:
 
         stats = compute_stats(str(audio_path))
         threshold = THRESHOLDS["post_denoise"]["snr_db_min"]
-        assert (
-            stats["snr_db"] >= threshold
-        ), f"Post-denoise SNR {stats['snr_db']:.1f} dB below threshold {threshold} dB"
+        assert stats["snr_db"] >= threshold, (
+            f"Post-denoise SNR {stats['snr_db']:.1f} dB below threshold {threshold} dB"
+        )
 
     @pytest.mark.slow
     def test_normalization_hits_target(self):
@@ -124,9 +124,9 @@ class TestAudioQualityThresholds:
         )
 
         peak_max = THRESHOLDS["post_normalize"]["true_peak_max"]
-        assert (
-            stats["true_peak"] <= peak_max
-        ), f"True peak {stats['true_peak']:.1f} dBTP exceeds maximum {peak_max} dBTP"
+        assert stats["true_peak"] <= peak_max, (
+            f"True peak {stats['true_peak']:.1f} dBTP exceeds maximum {peak_max} dBTP"
+        )
 
     @pytest.mark.slow
     def test_duration_preserved(self):

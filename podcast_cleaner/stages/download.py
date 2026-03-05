@@ -157,7 +157,7 @@ def run_download(
         episode_dir = ensure_dir(Path(output_base) / dirname)
         raw_dir = ensure_dir(episode_dir / "raw")
 
-        log.info(f"[{i+1}/{len(entries)}] {title}")
+        log.info(f"[{i + 1}/{len(entries)}] {title}")
 
         if is_done(episode_dir, "download"):
             log.info("  Skipping (already downloaded)")

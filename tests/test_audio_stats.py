@@ -117,6 +117,6 @@ class TestComputeStatsInMemory:
         mem_stats = compute_stats(str(path), audio_data=(audio, sr))
 
         for key in disk_stats:
-            assert (
-                disk_stats[key] == mem_stats[key]
-            ), f"Mismatch for {key}: disk={disk_stats[key]}, mem={mem_stats[key]}"
+            assert disk_stats[key] == mem_stats[key], (
+                f"Mismatch for {key}: disk={disk_stats[key]}, mem={mem_stats[key]}"
+            )
