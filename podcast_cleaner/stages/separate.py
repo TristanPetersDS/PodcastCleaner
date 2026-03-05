@@ -108,6 +108,9 @@ def demucs_separate(
         sources = apply_model(
             model, wav, device=device, split=True, overlap=0.25, shifts=1
         )
+        # Force async CUDA errors to surface now, while inside the try block
+        if device != "cpu" and torch.cuda.is_available():
+            torch.cuda.synchronize()
     except (torch.cuda.OutOfMemoryError, AssertionError, RuntimeError) as e:
         if isinstance(e, RuntimeError) and "CUDA" not in str(e):
             raise
@@ -126,7 +129,7 @@ def demucs_separate(
             )
         import gc
 
-        # Synchronize to clear asynchronous CUDA errors before moving on
+        # Synchronize to clear any remaining async CUDA errors
         if torch.cuda.is_available():
             try:
                 torch.cuda.synchronize()
