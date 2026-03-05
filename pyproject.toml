@@ -10,6 +10,7 @@ requires-python = ">=3.10"
 authors = [
     {name = "Tristan Peters"},
 ]
+license = {text = "MIT"}
 readme = "README.md"
 keywords = ["podcast", "audio", "demucs", "deepfilternet", "noise-reduction"]
 classifiers = [

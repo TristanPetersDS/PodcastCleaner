@@ -41,3 +41,9 @@ cookies*.txt
 
 # cuDNN workaround
 .cudnn8/
+
+# Internal planning docs
+docs/plans/
+
+# User-specific data
+podcast_list.txt
